@@ -5,8 +5,9 @@
 The supplied directory had no `.git` metadata. Initial git status/log failed for
 that reason. The requested GitHub repository https://github.com/asimog/biojev
 returned no refs. This directory now uses Git branch `main` and that repository
-as origin. There is no HEAD/baseline commit, commit history, or push. Files are
-untracked pending the user's initial commit. Existing architecture was retained.
+as origin. At initial bootstrap there was no baseline commit. The follow-up request
+authorized subtree installation: local baseline 0393e9f and three squashed
+subtree imports now exist. Nothing has been pushed. Existing architecture was retained.
 
 Node: **24.21.0**. npm: **11.19.0**. npm registry metadata verified current
 versions, engine compatibility, and Effect/Vitest peers before installation.
@@ -50,6 +51,7 @@ There is one root `package-lock.json`; all direct dependency versions are exact.
 - `npm run lint`: passed. Next-generated next-env.d.ts and .next are excluded
   from Biome; application code is checked.
 - `npm test`: 2 files, 4 tests passed, including real socket HTTP status and 404.
+  vitest.config.ts excludes vendored repos/** from application test discovery.
 - `npm run typecheck`: both workspaces passed.
 - `npm run build`: backend typecheck and Next.js production build passed.
 - `npm run check`: the complete combined command passed.
@@ -96,9 +98,11 @@ No adapter, tools, subagents, or timeout implementation was introduced.
 
 ## Reference source and skill
 
-Source subtrees are deferred because there is no baseline commit and the tree
-is untracked. Commands for Effect, Pi, and TypeSafe are in repos/README.md.
-No nested clones or imports from repos were created.
+Source subtrees were installed after explicit follow-up authorization:
+`repos/effect` at 073bb475d, `repos/pi` at 2e63fcdfbf, and `repos/typesafe` at
+66880ccded, all from upstream main using `git subtree add --squash`.
+Update commands are in repos/README.md. No nested clones or production imports
+from repos were created.
 
 Only effect-ts was installed locally for Codex at
 .agents/skills/effect-ts/SKILL.md, using the skills CLI's scoped install options.
@@ -114,8 +118,8 @@ runtime storage separate. Follow Task 2 of specs/IMPLEMENTATION_PLAN.md.
 ## Final tree
 
 Generated build output, node_modules, Git internals, Windows Zone.Identifier
-metadata, and vendored internals are excluded below. The original Windows
-metadata files remain on disk and are ignored.
+metadata, and vendored internals are excluded below. All 54 Windows
+Zone.Identifier files were removed; new metadata files remain ignored.
 
 ```text
 .agents/skills/effect-ts/SKILL.md
@@ -176,6 +180,9 @@ data/work/.gitkeep
 package-lock.json
 package.json
 repos/README.md
+repos/effect/ (squashed subtree; internals omitted)
+repos/pi/ (squashed subtree; internals omitted)
+repos/typesafe/ (squashed subtree; internals omitted)
 skills-lock.json
 specs/BOOTSTRAP_REPORT.md
 specs/IMPLEMENTATION_PLAN.md
@@ -191,4 +198,5 @@ specs/guides/FEEDBACK_LOOP.md
 specs/guides/REPOSITORY.md
 tooling/check-boundaries.mjs
 tsconfig.base.json
+vitest.config.ts
 ```

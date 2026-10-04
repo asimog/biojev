@@ -1,31 +1,27 @@
 # Read-only dependency source
 
-These directories are local, read-only references for coding agents.
+These are tracked, squashed Git subtrees from each upstream main branch:
 
-Planned:
-- `repos/effect` -> https://github.com/Effect-TS/effect
-- `repos/pi` -> https://github.com/earendil-works/pi
-- `repos/typesafe` -> https://github.com/typesafe-ai/typesafe-sdk-js
+| Directory | Upstream | Imported commit |
+| --- | --- | --- |
+| effect | https://github.com/Effect-TS/effect | 073bb475d |
+| pi | https://github.com/earendil-works/pi | 2e63fcdfbf |
+| typesafe | https://github.com/typesafe-ai/typesafe-sdk-js | 66880ccded |
 
-Prefer `git subtree ... --squash` after the BioJev repository has a clean initial commit.
+They are reference source, not nested clones or production dependencies.
+Production code must never import from `repos/**`. Installed package versions
+remain the actual dependency contract; upstream main can differ from them.
 
-Production code must never import from `repos/**`.
+For Effect work, read `repos/effect/LLMS.md` and inspect relevant source/tests.
 
-When working with Effect:
-1. read `repos/effect/LLMS.md`;
-2. inspect only the relevant ai-docs/source/tests;
-3. use the installed package version as the actual dependency contract.
-
-Bootstrap deferred subtrees: the supplied directory had no Git metadata, and
-https://github.com/asimog/biojev had no refs. The checkout is now initialized on
-`main` with that origin, without an unsolicited commit or push. After a clean
-baseline commit, run from the repository root:
+To update a subtree, run the corresponding command from the repository root:
 
 ```bash
-git subtree add --prefix=repos/effect https://github.com/Effect-TS/effect.git main --squash
-git subtree add --prefix=repos/pi https://github.com/earendil-works/pi.git main --squash
-git subtree add --prefix=repos/typesafe https://github.com/typesafe-ai/typesafe-sdk-js.git main --squash
+git subtree pull --prefix=repos/effect https://github.com/Effect-TS/effect.git main --squash
+git subtree pull --prefix=repos/pi https://github.com/earendil-works/pi.git main --squash
+git subtree pull --prefix=repos/typesafe https://github.com/typesafe-ai/typesafe-sdk-js.git main --squash
 ```
 
-No nested clones were created. These paths are ignored by default; adjust the
-ignore entries when intentionally adding tracked subtrees.
+The initial bootstrap deferred these imports because no baseline commit existed.
+The user's follow-up authorized installation; a local baseline and subtree
+commits were then created. Nothing has been pushed to GitHub.
