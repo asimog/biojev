@@ -1,0 +1,19 @@
+node_modules/
+.next/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+
+data/*
+!data/.gitkeep
+!data/artifacts/
+!data/artifacts/.gitkeep
+!data/work/
+!data/work/.gitkeep
+
+
+# Windows download metadata and TypeScript build cache
+*:Zone.Identifier
+*.tsbuildinfo

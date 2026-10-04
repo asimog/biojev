@@ -1,0 +1,31 @@
+{
+  "name": "biojev",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev:backend & npm run dev:web",
+    "dev:backend": "npm run dev --workspace=@biojev/backend",
+    "dev:web": "npm run dev --workspace=@biojev/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "check:effect": "npx @effect/tsgo diagnostics --project apps/biojev/tsconfig.json",
+    "check:boundaries": "node tooling/check-boundaries.mjs",
+    "lint": "biome check apps tooling",
+    "format": "biome format --write apps tooling",
+    "test": "vitest run",
+    "check:fast": "npm run check:effect && npm run check:boundaries && npm run lint && npm test",
+    "build": "npm run build --workspaces --if-present",
+    "check": "npm run check:fast && npm run typecheck && npm run build",
+    "prepare": "effect-tsgo patch --typescript --no-oxlint"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "@effect/tsgo": "0.48.0",
+    "@effect/vitest": "4.0.0",
+    "@types/node": "24.19.1",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

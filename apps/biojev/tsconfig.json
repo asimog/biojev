@@ -1,0 +1,56 @@
+{
+  "$schema": "../../node_modules/@effect/tsgo/schema.json",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        "diagnosticSeverity": {
+          "floatingEffect": "error",
+          "missingEffectContext": "error",
+          "missingEffectError": "error",
+          "missingLayerContext": "error",
+          "missingEffectServiceDependency": "error",
+          "genericEffectServices": "error",
+          "unsafeEffectTypeAssertion": "error",
+          "duplicatePackage": "error",
+          "tryCatchInEffectGen": "error",
+          "missingStarInYieldEffectGen": "error",
+          "runEffectInsideEffect": "error",
+          "unstableApiUsage": "error",
+          "experimentalApiUsage": "error"
+        },
+        "overrides": [
+          {
+            "include": ["main.ts"],
+            "options": {
+              "allowedUnstableApis": ["effect/http/HttpRouter#serve"]
+            }
+          },
+          {
+            "include": ["http/status.ts"],
+            "options": {
+              "allowedUnstableApis": [
+                "effect/http/HttpRouter#add",
+                "effect/http/HttpServerResponse#json"
+              ]
+            }
+          },
+          {
+            "include": ["test/status.test.ts"],
+            "options": {
+              "allowedUnstableApis": [
+                "effect/http/HttpClient#HttpClient",
+                "effect/http/HttpRouter#serve"
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "include": ["**/*.ts"]
+}
