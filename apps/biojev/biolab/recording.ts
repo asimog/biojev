@@ -2,6 +2,7 @@ import { DateTime, Effect, Schema } from "effect"
 import type { SqlClient } from "effect/sql"
 import { BioLabError } from "./BioLab.ts"
 import type { CanonicalRef } from "./model/Domain.ts"
+import { DiscoveredCandidate, GenesisSnapshot } from "./model/Genesis.ts"
 import { LearningRecord } from "./model/Learning.ts"
 import type { Mission } from "./model/Mission.ts"
 import {
@@ -160,6 +161,22 @@ export const makeRecording = (
             createdAt: DateTime.toEpochMillis(yield* DateTime.now),
           }
           yield* sql`INSERT INTO agent_runs (runId, missionId, body) VALUES (${value.runId}, ${value.missionId}, ${JSON.stringify(run)})`
+          if (run.role === "director") {
+            const rows = yield* sql<{
+              body: string
+            }>`SELECT body FROM genesis WHERE missionId = ${run.missionId}`
+            if (rows.length > 0) {
+              const genesis = yield* decode(
+                Schema.fromJsonString(GenesisSnapshot),
+                rows[0].body,
+              )
+              if (
+                genesis.status === "READY_FOR_DIRECTION" &&
+                genesis.missionRevision === run.missionRevision
+              )
+                yield* sql`UPDATE genesis SET body = ${JSON.stringify({ ...genesis, status: "DIRECTOR_RUNNING" })} WHERE missionId = ${run.missionId}`
+            }
+          }
         } else {
           const existing = yield* getRun(value.runId)
           const {
@@ -209,6 +226,19 @@ export const makeRecording = (
       Effect.gen(function* () {
         const run = yield* getRun(runId)
         yield* sql`UPDATE agent_runs SET body = ${JSON.stringify({ ...run, status: "SETTLED" })} WHERE runId = ${runId}`
+        if (run.role === "director") {
+          const rows = yield* sql<{
+            body: string
+          }>`SELECT body FROM genesis WHERE missionId = ${run.missionId}`
+          if (rows.length > 0) {
+            const genesis = yield* decode(
+              Schema.fromJsonString(GenesisSnapshot),
+              rows[0].body,
+            )
+            if (genesis.status === "DIRECTOR_RUNNING")
+              yield* sql`UPDATE genesis SET body = ${JSON.stringify({ ...genesis, status: "READY_FOR_DIRECTION" })} WHERE missionId = ${run.missionId}`
+          }
+        }
       }),
     )
   })
@@ -345,6 +375,7 @@ export const makeRecording = (
   const references = Effect.fn("BioLab.references")(function* (
     refs: ReadonlyArray<CanonicalRef>,
     expectedKind?: string,
+    missionId?: string,
   ) {
     if (expectedKind !== undefined)
       yield* decode(
@@ -357,7 +388,47 @@ export const makeRecording = (
         refs,
       )
     for (const ref of refs) {
-      if (ref.kind === "Artifact") {
+      if (
+        ref.kind === "DiscoveredSource" ||
+        ref.kind === "DiscoveredCapability"
+      ) {
+        if (missionId === undefined)
+          return yield* failure(
+            "INVALID_INPUT",
+            "references",
+            "Discovery references require mission attribution",
+          )
+        const rows = yield* sql<{
+          body: string
+        }>`SELECT body FROM discovered_candidates WHERE missionId = ${missionId} AND id = ${ref.id}`
+        if (rows.length === 0)
+          return yield* failure(
+            "NOT_FOUND",
+            "references",
+            "Discovery candidate not found",
+          )
+        const candidate = yield* decode(
+          Schema.fromJsonString(DiscoveredCandidate),
+          rows[0].body,
+        )
+        if (
+          ref.kind !==
+          (candidate.kind === "source"
+            ? "DiscoveredSource"
+            : "DiscoveredCapability")
+        )
+          return yield* failure(
+            "INVALID_INPUT",
+            "references",
+            "Discovery reference kind mismatch",
+          )
+      } else if (
+        ref.kind === "SemanticMeasurement" &&
+        missionId !== undefined &&
+        (yield* sql`SELECT id FROM genesis_measurements WHERE missionId = ${missionId} AND id = ${ref.id}`)
+          .length > 0
+      ) {
+      } else if (ref.kind === "Artifact") {
         const rows =
           yield* sql`SELECT artifactId FROM artifacts WHERE artifactId = ${ref.id}`
         if (rows.length === 0)
@@ -449,7 +520,7 @@ export const makeRecording = (
               "retainScience",
               "Result needs attributable settled execution",
             )
-          yield* references(record.value.inputRefs)
+          yield* references(record.value.inputRefs, undefined, run.missionId)
           for (const ref of record.value.outputRefs) {
             const outputs =
               yield* sql`SELECT artifactId FROM artifact_origins WHERE artifactId = ${ref.id} AND runId = ${run.runId}`
@@ -463,8 +534,13 @@ export const makeRecording = (
         } else {
           if (record.kind === "ResultAssessment") {
             yield* references([record.value.resultRef], "ScientificResult")
-            yield* references(record.value.relatedRefs)
-          } else yield* references(record.value.basisRefs)
+            yield* references(
+              record.value.relatedRefs,
+              undefined,
+              run.missionId,
+            )
+          } else
+            yield* references(record.value.basisRefs, undefined, run.missionId)
           if (record.kind === "HypothesisRevision") {
             const previous = yield* sql<{
               id: string
@@ -563,6 +639,7 @@ export const makeRecording = (
           decode(Schema.fromJsonString(RetainedRecord), row.body),
         ),
         next: rows.length > limit ? rows[limit - 1].rowid : null,
+        cursor: rows[Math.min(rows.length, limit) - 1]?.rowid ?? after,
       }
     },
     (effect) => transaction(effect),
@@ -609,7 +686,7 @@ export const makeRecording = (
           return { kind: record.kind, id }
         }
         if (record.kind === "SemanticMeasurement")
-          yield* references(record.value.subjectRefs)
+          yield* references(record.value.subjectRefs, undefined, run.missionId)
         else if (record.kind === "CapabilityVersion") {
           if (run.role !== "researcher")
             return yield* failure(
@@ -678,7 +755,7 @@ export const makeRecording = (
               "Assessment role is forged",
             )
           yield* references([record.value.versionRef], "CapabilityVersion")
-          yield* references(record.value.basisRefs)
+          yield* references(record.value.basisRefs, undefined, run.missionId)
         } else {
           if (run.role !== "director")
             return yield* failure(

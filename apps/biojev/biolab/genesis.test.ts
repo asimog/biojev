@@ -98,10 +98,20 @@ it.effect(
           assert.lengthOf(yield* lab.searchDiscovery("mission", "Public"), 1)
           assert.equal(generic.measurements[0].answer.noul, 0.01)
           assert.isFalse((yield* lab.getLifecycle("mission")).genesisComplete)
-          yield* lab.recordDirectorDecision(
-            actor.actor,
-            decision("first", "mission"),
-          )
+          const wrongKind = yield* lab
+            .recordDirectorDecision(actor.actor, {
+              ...decision("wrong-kind", "mission"),
+              basisRefs: [{ kind: "DiscoveredCapability", id: "candidate-1" }],
+            })
+            .pipe(Effect.flip)
+          assert.equal(wrongKind.code, "INVALID_INPUT")
+          yield* lab.recordDirectorDecision(actor.actor, {
+            ...decision("first", "mission"),
+            basisRefs: [
+              { kind: "DiscoveredSource", id: "candidate-1" },
+              { kind: "SemanticMeasurement", id: "measurement-1" },
+            ],
+          })
           yield* lab.settleRun("director")
           const complete = yield* lab.getGenesis("mission")
           assert.equal(complete?.status, "COMPLETED")

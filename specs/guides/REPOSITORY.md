@@ -16,7 +16,7 @@ and depth; this guide assigns ownership rather than snapshotting every file.
 | apps/biojev/config/ | Process configuration |
 | apps/biojev/http/ | Backend command/read/observation interfaces |
 | apps/biojev/test/ | Behavioral checks at application interfaces |
-| apps/web/ | Human UI and server-rendered observation |
+| apps/web/ | Human command/observation UI and same-origin backend proxy |
 | tooling/ | Local enforcement scripts |
 | specs/ | Design, workflows, plan, and verification evidence |
 | repos/ | Tracked upstream reference sources |
@@ -43,7 +43,7 @@ Import Durable's bundled storage/tools instead of installing a CLI, agent-core,
 or another executor to obtain them. The three Pi packages are Durable, Pi AI,
 and Chord; their current integration qualifies resources and controlled computation,
 with role/lifecycle programs exercised in integration tests. Production backend
-composition remains pending.
+composition owns scheduling, provider configuration, mission HTTP/SSE, and shutdown.
 
 Use one root lockfile; npm keeps Pi package files in node_modules. The Pi
 platform folder contains integration only, never copied upstream source or a

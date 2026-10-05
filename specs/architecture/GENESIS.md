@@ -17,10 +17,11 @@ Application composition supplies a versioned discovery program. Replace that
 program or its source configuration without changing Core, role contracts,
 BioLab authority, or the research counter. Discovery identifiers and metadata
 are data; no source names, modalities, installed tools, ranking rules, or
-scientific abilities are embedded in Core. A deployment may initially configure
-GDC source discovery and bio.tools capability discovery. Both are replaceable
-examples, not mandatory architecture dependencies. Their actual ingestion is
-outside this specification-change task.
+scientific abilities are embedded in Core or application routing. There are no
+GDC or bio.tools branches, required catalog slots, or provider-specific completion
+conditions. Those names describe optional deployment examples only. Any source
+or capability catalog can be supplied by a replacement discovery program;
+provider-specific ingestion is outside this specification-change task.
 
 Replacement affects initialization that has not completed and later Refresh.
 Changing configuration never erases completed Genesis or research history. An
@@ -162,11 +163,19 @@ Full production v0 qualification also requires the command/observation/shutdown
 acceptance checks in the implementation plan. Passing initialization tests alone
 does not qualify a deployed autonomous mission.
 
-The current minimal scaffold persists readiness, failure, and completion
-checkpoints, with absence meaning NOT_STARTED. Active DISCOVERING and
-DIRECTOR_RUNNING phases are orchestration obligations; durable activity exposure
-is still part of production composition. BioLab's trusted discovery operation
+BioLab persists DISCOVERING while semantic discovery is running, readiness and
+failure checkpoints, DIRECTOR_RUNNING when the inaugural run is admitted, and
+completion with both handoff references. Absence means NOT_STARTED. Interrupted
+Director settlement restores readiness without fabricating completion.
+BioLab's trusted discovery operation
 retains candidate and measurement bodies separately from the snapshot. Semantic
 transport attribution uses the Genesis initialization identity; it creates no
 fourth AgentRun or role. Actor semantic tools keep their normal role-run identity.
 Discovery reads paginate by candidate identity; a bounded page is not pruning.
+
+Director decisions and later learning may cite retained DiscoveredSource,
+DiscoveredCapability and initialization SemanticMeasurement references. BioLab
+resolves these within the caller's mission and checks the candidate kind;
+discovery references cannot impersonate obtained results or qualified versions.
+Pi read_record resolves these same references without requiring a duplicate
+copy in the ordinary research-record table.

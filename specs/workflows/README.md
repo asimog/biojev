@@ -62,9 +62,12 @@ mission revision persistence and deterministic Pi model/tool/cancellation paths.
 Role programs and command-driven continuous scheduling are qualified through
 real Pi/BioLab integration tests. Startup reconciliation aborts interrupted work
 without replay and retains its original block as failed/timed-out (or cancelled
-when paused/stopped), preserving available canonical history. The production
-status backend is not yet wired to these programs; process-crash qualification
-and the full v0 acceptance path remain unfinished.
+when paused/stopped), preserving available canonical history. Production HTTP
+commands and observation are wired to these programs. Real-process checks cover
+model-turn SIGKILL, interrupted Researcher recovery with unchanged results,
+missing runtime storage, and active SIGTERM settlement before BioLab release.
+The implementation plan records the completed local v0 acceptance audit and
+separates deterministic trajectory qualification from configured-provider checks.
 Pi storage requires a single-process owner; acquire ownership before opening it.
 Harness close preserves pending runtime work. Apply explicit run abort/cleanup
 when stopping or orphaning work rather than treating resource close as completion.

@@ -59,6 +59,17 @@ export const discoverGenesis = Effect.fn("Core.discoverGenesis")(function* <
   const jev = yield* JevEngine
   const mission = yield* lab.getMission(missionId)
   const map = yield* discover(mission)
+  if (map.candidates.length === 0)
+    return yield* lab.recordGenesisDiscovery({
+      ...map,
+      missionId,
+      missionRevision: mission.revision,
+      measurements: [],
+    })
+  yield* lab.recordGenesisDiscovery(
+    { ...map, missionId, missionRevision: mission.revision, measurements: [] },
+    "DISCOVERING",
+  )
   const measured = yield* jev
     .measure({
       ...question(mission, map.candidates),

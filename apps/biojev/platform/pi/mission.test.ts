@@ -10,18 +10,32 @@ import {
   fauxToolCall,
 } from "@earendil-works/pi-ai/providers/faux"
 import { defineExtension, defineTool } from "@earendil-works/pi-durable"
-import { NodeServices } from "@effect/platform-node"
+import { NodeHttpServer, NodeServices } from "@effect/platform-node"
 import { assert, it } from "@effect/vitest"
-import { DateTime, Effect, Fiber, FileSystem, Path, Schema } from "effect"
+import {
+  Context,
+  DateTime,
+  Effect,
+  Fiber,
+  FileSystem,
+  Layer,
+  Path,
+  Schema,
+  Stream,
+} from "effect"
+import { HttpClient, HttpClientRequest, HttpRouter } from "effect/http"
 import { BioLab } from "../../biolab/BioLab.ts"
 import { CanonicalRef } from "../../biolab/model/Domain.ts"
+import { Mission } from "../../biolab/model/Mission.ts"
 import { Operation } from "../../biolab/model/Recording.ts"
 import { BioLabLive } from "../../biolab/SqliteLive.ts"
 import { LinuxNetworkConfig } from "../../config/config.ts"
 import { discoverGenesis } from "../../core/genesis.ts"
 import { advanceMission } from "../../core/mission.ts"
 import { acquireMissionLoop } from "../../core/mission-loop.ts"
-import { JevEngine } from "../../jevengine/JevEngine.ts"
+import { makeMissionRoutes } from "../../http/missions.ts"
+import { HistoryView, MissionSnapshotView } from "../../http/views.ts"
+import { JevEngine, JevEngineError } from "../../jevengine/JevEngine.ts"
 import {
   decision,
   discoveredMap,
@@ -35,12 +49,83 @@ const Input = Schema.Struct({
   runId: Schema.String,
   role: Schema.Literals(["director", "researcher", "validator"]),
   mission: Schema.Struct({ missionId: Schema.String }),
+  genesis: Schema.optionalKey(
+    Schema.NullOr(Schema.Struct({ status: Schema.String })),
+  ),
   lifecycle: Schema.Struct({
     validation: Schema.optionalKey(
       Schema.Struct({ reportId: Schema.optionalKey(Schema.String) }),
     ),
   }),
 })
+
+it.live(
+  "parks a missing inaugural handoff without repeatedly invoking Pi or stopping the mission",
+  () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem
+      const path = yield* Path.Path
+      const directory = yield* fs.makeTempDirectoryScoped()
+      const network = yield* LinuxNetworkConfig
+      const faux = fauxProvider()
+      const models = createModels()
+      models.setProvider(faux.provider)
+      let turns = 0
+      faux.setResponses(
+        Array.from({ length: 8 }, () => () => {
+          turns++
+          return fauxAssistantMessage(
+            "Unable to produce an institutional handoff.",
+          )
+        }),
+      )
+      yield* Effect.scoped(
+        Effect.gen(function* () {
+          const lab = yield* BioLab
+          const roles = yield* acquireRolePrograms({
+            database: path.join(directory, "pi.sqlite"),
+            models,
+            model: { provider: "faux", modelId: "faux-1" },
+            environment: {
+              nodeBinary: process.execPath,
+              nodeModules: path.resolve("node_modules"),
+              workerDirectory: path.resolve(
+                "apps/biojev/platform/pi/execution-env",
+              ),
+              artifactDirectory: path.join(directory, "artifacts"),
+              workspaceRoot: path.join(directory, "workspaces"),
+              ...network,
+            },
+          })
+          const commands = yield* acquireMissionLoop({
+            ...roles,
+            genesis: (id: string) =>
+              lab.recordGenesisDiscovery(discoveredMap(id)),
+          })
+          yield* commands.start({
+            missionId: "mission",
+            statement: "Investigate without prescribing a method",
+          })
+          while ((yield* commands.state).failures.mission === undefined)
+            yield* Effect.sleep("10 millis")
+          assert.equal(turns, 1)
+          yield* Effect.sleep("100 millis")
+          assert.equal(turns, 1)
+          assert.equal((yield* lab.getMission("mission")).status, "RUNNING")
+          assert.lengthOf(yield* lab.getResearchBlocks("mission"), 0)
+          yield* commands.resume("mission")
+          while ((yield* commands.state).failures.mission === undefined)
+            yield* Effect.sleep("10 millis")
+          assert.equal(turns, 2)
+          assert.lengthOf(yield* lab.getRuns("mission"), 2)
+          yield* commands.stop("mission")
+        }).pipe(
+          Effect.provide(BioLabLive(path.join(directory, "biojev.sqlite"))),
+        ),
+      )
+    }).pipe(Effect.provide(NodeServices.layer)),
+  { timeout: 15000 },
+)
 
 it.live(
   "runs a real ten-block Pi/BioLab lifecycle, a fresh Validator, explicit Director review and the next Researcher",
@@ -67,6 +152,10 @@ it.live(
             user.content,
           )
           if (input.role === "director") {
+            assert.isTrue(
+              input.genesis?.status === "DIRECTOR_RUNNING" ||
+                input.genesis?.status === "COMPLETED",
+            )
             if (
               input.lifecycle.validation?.reportId !== undefined &&
               !failedReview
@@ -211,6 +300,9 @@ it.live(
                   ]
             return call("submit_handoff", {
               ...payload,
+              semanticMeasurementRefs: [
+                { kind: "SemanticMeasurement", id: "measurement-1" },
+              ],
               scientificResultRefs,
               summary:
                 variant < 2
@@ -278,7 +370,22 @@ it.live(
                 }),
               ).pipe(
                 Effect.provideService(JevEngine, {
-                  measure: () => Effect.succeed(map.measurements[0]),
+                  measure: () =>
+                    lab.getGenesis("mission").pipe(
+                      Effect.mapError(
+                        (cause) =>
+                          new JevEngineError({
+                            message: "Cannot inspect Genesis checkpoint",
+                            cause,
+                          }),
+                      ),
+                      Effect.tap((snapshot) =>
+                        Effect.sync(() =>
+                          assert.equal(snapshot?.status, "DISCOVERING"),
+                        ),
+                      ),
+                      Effect.as(map.measurements[0]),
+                    ),
                 }),
               ),
           }
@@ -314,6 +421,23 @@ it.live(
           assert.equal(
             yield* advanceMission("mission", programs),
             "RUN_VALIDATOR",
+          )
+          const activity = yield* Schema.decodeEffect(
+            MissionSnapshotView.fields.activity,
+          )(yield* roles.activity("mission"))
+          assert.isTrue(
+            activity.some(
+              (run) =>
+                run.requestedModel?.modelId === "faux-1" &&
+                run.actualModel !== null,
+            ),
+          )
+          assert.isTrue(
+            activity.some((run) =>
+              run.recentTools?.some(
+                (tool) => tool.name === "bash" && tool.status === "completed",
+              ),
+            ),
           )
           const pending = yield* lab.getLifecycle("mission")
           assert.isTrue(pending.validationCompletedAwaitingDirectorReview)
@@ -681,7 +805,7 @@ it.live.each([false, true])(
 )
 
 it.live(
-  "application commands drive Pi work and acknowledge pause/revision/stop after cleanup",
+  "HTTP commands drive imported Pi, stream actual activity, and acknowledge pause/revision/stop after cleanup",
   () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
@@ -763,30 +887,81 @@ it.live(
             genesis: (missionId: string) =>
               lab.recordGenesisDiscovery(discoveredMap(missionId)),
           })
+          const server = HttpRouter.serve(
+            makeMissionRoutes(lab, commands, roles.activity),
+            { disableListenLog: true },
+          ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
+          const client = Context.get(
+            yield* Layer.build(server),
+            HttpClient.HttpClient,
+          )
+          const post = (url: string, body: unknown) =>
+            client.execute(
+              HttpClientRequest.post(url).pipe(
+                HttpClientRequest.bodyText(
+                  JSON.stringify(body),
+                  "application/json",
+                ),
+              ),
+            )
+          const command = Effect.fn(function* (body: unknown) {
+            const response = yield* post("/api/missions/mission/commands", body)
+            assert.equal(response.status, 200)
+            return yield* Schema.decodeUnknownEffect(Mission)(
+              yield* response.json,
+            )
+          })
           let ready = gate()
-          yield* commands.start({
+          const created = yield* post("/api/missions", {
             missionId: "mission",
             statement: "Investigate a source agnostic computational question",
           })
+          assert.equal(created.status, 201)
           yield* Effect.promise(() => ready)
-          assert.equal((yield* commands.pause("mission")).status, "PAUSED")
+          const observed = yield* client.get("/api/missions/mission")
+          const snapshot = yield* Schema.decodeUnknownEffect(
+            MissionSnapshotView,
+          )(yield* observed.json)
+          const projected = snapshot.activity
+          const firstHistoryResponse = yield* client.get(
+            "/api/missions/mission/history?limit=1",
+          )
+          const firstHistory = yield* Schema.decodeUnknownEffect(HistoryView)(
+            yield* firstHistoryResponse.json,
+          )
+          assert.lengthOf(firstHistory.records, 1)
+          assert.isNotNull(firstHistory.next)
+          assert.isTrue(
+            projected.some((run) => run.state === "ACTIVE" && run.modelActive),
+          )
+          assert.doesNotThrow(() => JSON.stringify(projected))
+          const stream = yield* client.get("/api/missions/mission/events")
+          const frames = yield* stream.stream.pipe(
+            Stream.take(1),
+            Stream.runCollect,
+          )
+          assert.match(
+            new TextDecoder().decode(frames[0]),
+            /"modelActive":true/,
+          )
+          assert.equal((yield* command({ action: "pause" })).status, "PAUSED")
           assert.equal(ended, 1)
           const initial = (yield* lab.getResearchBlocks("mission"))[0]
           assert.equal(initial.status, "CANCELLED")
           assert.equal(initial.classification, "ORPHAN")
           ready = gate()
-          yield* commands.resume("mission")
+          yield* command({ action: "resume" })
           yield* Effect.promise(() => ready)
           ready = gate()
-          const revised = yield* commands.revise({
-            missionId: "mission",
+          const revised = yield* command({
+            action: "revise",
             expectedRevision: 1,
             statement: "Investigate a different open computational question",
           })
           assert.equal(revised.revision, 2)
           assert.equal(ended, 2)
           yield* Effect.promise(() => ready)
-          const stopped = yield* commands.stop("mission")
+          const stopped = yield* command({ action: "stop" })
           assert.equal(stopped.status, "STOPPED")
           assert.equal(ended, 3)
           const blocks = yield* lab.getResearchBlocks("mission")
@@ -801,9 +976,30 @@ it.live(
           assert.equal(blocks[0].deadline, initial.deadline)
           assert.equal((yield* lab.getLifecycle("mission")).countableBlocks, 0)
           assert.isFalse((yield* lab.getLifecycle("mission")).recoveryRequired)
-          const resume = yield* commands.resume("mission").pipe(Effect.flip)
-          assert.equal(resume.code, "CONFLICT")
+          const resume = yield* post("/api/missions/mission/commands", {
+            action: "resume",
+          })
+          assert.equal(resume.status, 409)
           assert.lengthOf(yield* lab.getMissionRevisions("mission"), 2)
+          const laterResponse = yield* client.get(
+            `/api/missions/mission/history?after=${firstHistory.cursor}`,
+          )
+          const later = yield* Schema.decodeUnknownEffect(HistoryView)(
+            yield* laterResponse.json,
+          )
+          assert.isTrue(
+            later.records.every(
+              (record) => record.id !== firstHistory.records[0].id,
+            ),
+          )
+          const emptyResponse = yield* client.get(
+            `/api/missions/mission/history?after=${later.cursor}`,
+          )
+          const empty = yield* Schema.decodeUnknownEffect(HistoryView)(
+            yield* emptyResponse.json,
+          )
+          assert.lengthOf(empty.records, 0)
+          assert.equal(empty.cursor, later.cursor)
         }).pipe(
           Effect.provide(BioLabLive(path.join(directory, "biojev.sqlite"))),
         ),

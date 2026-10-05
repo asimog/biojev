@@ -35,9 +35,9 @@ const toolOutput = (context: ModelContext, name: string) => {
     .join("")
 }
 
-it.live(
-  "records real Pi computation through authorized BioLab tools, reopens it, and reuses artifacts in a fresh role",
-  () =>
+it.live.each(["researcher", "validator"] as const)(
+  "records real Pi computation through authorized BioLab tools, reopens it, and reuses a capability in a fresh %s",
+  (role) =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
       const path = yield* Path.Path
@@ -111,6 +111,8 @@ it.live(
           )
           let artifact: CanonicalRef | undefined
           let resultRef: CanonicalRef | undefined
+          let implementation: CanonicalRef | undefined
+          const versions: CanonicalRef[] = []
           faux.setResponses([
             fauxAssistantMessage(
               fauxToolCall("write", {
@@ -177,6 +179,58 @@ it.live(
             (context) => {
               toolOutput(context, "record_learning")
               return fauxAssistantMessage(
+                fauxToolCall("retain_artifact", { path: "analysis.py" }),
+                { stopReason: "toolUse" },
+              )
+            },
+            (context) => {
+              implementation = Schema.decodeSync(
+                Schema.fromJsonString(CanonicalRef),
+              )(toolOutput(context, "retain_artifact"))
+              if (resultRef === undefined)
+                throw new Error("Missing qualification result")
+              return fauxAssistantMessage(
+                fauxToolCall("retain_capability", {
+                  capabilityId: "missingness-check",
+                  name: "Missingness check",
+                  description: "Reusable obtained zero and missingness example",
+                  executionDescriptor: { command: "python3 analysis.py" },
+                  artifactRefs: [implementation],
+                  qualificationResultRefs: [resultRef],
+                  status: "QUALIFIED",
+                }),
+                { stopReason: "toolUse" },
+              )
+            },
+            (context) => {
+              versions.push(
+                Schema.decodeSync(Schema.fromJsonString(CanonicalRef))(
+                  toolOutput(context, "retain_capability"),
+                ),
+              )
+              if (implementation === undefined || resultRef === undefined)
+                throw new Error("Missing qualified implementation")
+              return fauxAssistantMessage(
+                fauxToolCall("retain_capability", {
+                  capabilityId: "missingness-check",
+                  name: "Missingness check",
+                  description:
+                    "Second immutable metadata version of the same obtained implementation",
+                  executionDescriptor: { command: "python3 analysis.py" },
+                  artifactRefs: [implementation],
+                  qualificationResultRefs: [resultRef],
+                  status: "QUALIFIED",
+                }),
+                { stopReason: "toolUse" },
+              )
+            },
+            (context) => {
+              versions.push(
+                Schema.decodeSync(Schema.fromJsonString(CanonicalRef))(
+                  toolOutput(context, "retain_capability"),
+                ),
+              )
+              return fauxAssistantMessage(
                 "The result and interpretation are retained separately.",
               )
             },
@@ -193,10 +247,13 @@ it.live(
           assert.isDefined(resultRef)
           if (artifact === undefined || resultRef === undefined)
             return yield* Effect.die("Model did not retain expected records")
-          assert.lengthOf(yield* lab.searchMemory("mission", ""), 2)
+          assert.lengthOf(yield* lab.searchMemory("mission", ""), 4)
+          assert.lengthOf(versions, 2)
+          if (implementation === undefined)
+            return yield* Effect.die("Missing implementation")
           yield* Effect.promise(() => resource.env.cleanup(BACKGROUND_CONTEXT))
           yield* lab.settleRun(trusted.actor.runId)
-          return { artifact, resultRef }
+          return { artifact, resultRef, implementation, versions }
         }).pipe(Effect.provide(BioLabLive(database))),
       )
       yield* Effect.scoped(
@@ -209,7 +266,7 @@ it.live(
           const fresh = yield* lab.beginRun({
             runId: "validation-run",
             missionId: "mission",
-            role: "validator",
+            role,
             conversationId: "fresh-validator",
             environmentId: resource.env.id,
           })
@@ -234,6 +291,77 @@ it.live(
           assert.isTrue(computation.ok)
           if (computation.ok) assert.equal(computation.value.exitCode, 0)
           assert.equal(output.trim(), "independent check")
+          yield* lab.getArtifact(fresh.actor, retained.implementation.id)
+          yield* resource.restoreArtifact(
+            retained.implementation.id,
+            "analysis.py",
+            BACKGROUND_CONTEXT,
+          )
+          const reused = yield* Effect.promise(() =>
+            resource.env.exec("python3 analysis.py", {}, BACKGROUND_CONTEXT),
+          )
+          assert.isTrue(reused.ok)
+          if (reused.ok) assert.equal(reused.value.exitCode, 0)
+          const assessment = yield* lab.recordCapabilityAssessment(
+            fresh.actor,
+            {
+              assessmentId: "independent-assessment",
+              versionRef: retained.versions[1],
+              summary:
+                "Retained implementation executes in a fresh independent environment",
+              strengths: ["Explicit missingness"],
+              concerns: [],
+              basisRefs: [retained.resultRef],
+              actorRole: role,
+              originRunId: "validation-run",
+            },
+          )
+          assert.equal(assessment.kind, "CapabilityAssessment")
+          const denied = yield* lab
+            .recordCapabilitySelection(fresh.actor, {
+              selectionId: "forbidden-selection",
+              capabilityId: "missingness-check",
+              versionRef: retained.versions[0],
+              reason: "Validator cannot activate",
+              originRunId: "validation-run",
+            })
+            .pipe(Effect.flip)
+          assert.equal(denied.code, "UNAUTHORIZED")
+          const director = yield* lab.beginRun({
+            runId: "director-run",
+            missionId: "mission",
+            role: "director",
+            conversationId: "director",
+            environmentId: "director-env",
+          })
+          for (const [index, versionRef] of [
+            retained.versions[1],
+            retained.versions[0],
+            null,
+          ].entries()) {
+            yield* lab.recordCapabilitySelection(director.actor, {
+              selectionId: `selection-${index}`,
+              capabilityId: "missingness-check",
+              versionRef,
+              reason:
+                index === 0
+                  ? "Select qualified version"
+                  : index === 1
+                    ? "Roll back default"
+                    : "Clear default",
+              originRunId: "director-run",
+            })
+            const defaults = yield* lab.getCapabilityDefaults("mission")
+            assert.deepStrictEqual(defaults[0].versionRef, versionRef)
+          }
+          assert.equal(
+            (yield* lab.getRecord(retained.versions[0])).record.kind,
+            "CapabilityVersion",
+          )
+          assert.equal(
+            (yield* lab.getRecord(retained.versions[1])).record.kind,
+            "CapabilityVersion",
+          )
         }).pipe(Effect.provide(BioLabLive(database))),
       )
     }).pipe(Effect.provide(NodeServices.layer)),

@@ -124,6 +124,49 @@
                 "effect/sql/SqlError#SqlError"
               ]
             }
+          },
+          {
+            "include": ["http/missions.ts"],
+            "options": {
+              "allowedUnstableApis": [
+                "effect/http/HttpRouter#add",
+                "effect/http/HttpRouter#schemaPathParams",
+                "effect/http/HttpServerRequest#HttpServerRequest",
+                "effect/http/HttpServerRequest#schemaBodyJson",
+                "effect/http/HttpServerRequest#schemaSearchParams",
+                "effect/http/HttpServerResponse#HttpServerResponse",
+                "effect/http/HttpServerResponse#json",
+                "effect/http/HttpServerResponse#stream",
+                "effect/http/HttpIncomingMessage#MaxBodySize",
+                "effect/http/HttpServerResponse#setHeaders",
+                "effect/http/HttpServerResponse"
+              ]
+            }
+          },
+          {
+            "include": ["platform/pi/mission.test.ts"],
+            "options": {
+              "allowedUnstableApis": [
+                "effect/http/HttpRouter#serve",
+                "effect/http/HttpClient#HttpClient",
+                "effect/http/HttpClientRequest#post",
+                "effect/http/HttpClientRequest#bodyText",
+                "effect/http/HttpClientRequest"
+              ]
+            }
+          },
+          {
+            "include": ["test/missions-http.test.ts"],
+            "options": {
+              "allowedUnstableApis": [
+                "effect/http/HttpClient#HttpClient",
+                "effect/http/HttpClientRequest#post",
+                "effect/http/HttpClientRequest#bodyText",
+                "effect/http/HttpClientRequest",
+                "effect/http/HttpClientRequest#setHeader",
+                "effect/http/HttpRouter#serve"
+              ]
+            }
           }
         ]
       }

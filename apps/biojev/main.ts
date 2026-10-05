@@ -1,25 +1,105 @@
-import { NodeRuntime, NodeServices } from "@effect/platform-node"
-import { Effect, Layer } from "effect"
+import {
+  NodeHttpClient,
+  NodeRuntime,
+  NodeServices,
+} from "@effect/platform-node"
+import { Config, Effect, Layer, Option, Path, Redacted } from "effect"
 import { HttpRouter } from "effect/http"
+import { BioLab } from "./biolab/BioLab.ts"
 import { BioLabLive } from "./biolab/SqliteLive.ts"
-import { BioJevConfig } from "./config/config.ts"
-import { StatusRoute } from "./http/status.ts"
+import {
+  ApplicationPaths,
+  BioJevConfig,
+  LinuxNetworkConfig,
+  OpenRouterKey,
+  OpenRouterModelConfig,
+  TypeSafeConfig,
+} from "./config/config.ts"
+import { acquireMissionLoop } from "./core/mission-loop.ts"
+import { makeMissionRoutes } from "./http/missions.ts"
+import { JevEngine, JevEngineError } from "./jevengine/JevEngine.ts"
+import { TypeSafeLive } from "./jevengine/TypeSafeLive.ts"
+import { catalogGenesis } from "./platform/genesis.ts"
 import { HttpLive } from "./platform/HttpLive.ts"
 import { acquireOwnership } from "./platform/ownership.ts"
-import { PiLive } from "./platform/pi/PiLive.ts"
+import { createResearchModels } from "./platform/pi/models.ts"
+import { acquireRolePrograms } from "./platform/pi/roles.ts"
 
 const program = Effect.scoped(
   Effect.gen(function* () {
-    const ownership = yield* acquireOwnership(yield* BioJevConfig)
-    const resources = Layer.merge(
-      BioLabLive(ownership.biojevDatabase),
-      PiLive(ownership.piDatabase),
+    const path = yield* Path.Path
+    const root = yield* path.fromFileUrl(new URL("../../", import.meta.url))
+    const databases = yield* BioJevConfig
+    const ownership = yield* acquireOwnership({
+      biojevDatabase: path.resolve(root, databases.biojevDatabase),
+      piDatabase: path.resolve(root, databases.piDatabase),
+    })
+    const paths = yield* ApplicationPaths
+    const openRouterKey = yield* Config.option(OpenRouterKey)
+    const typeSafe = yield* Config.option(TypeSafeConfig)
+    const ready =
+      Option.isSome(openRouterKey) &&
+      Redacted.value(openRouterKey.value).length > 0 &&
+      Option.isSome(typeSafe) &&
+      Redacted.value(typeSafe.value.apiKey).length > 0
+    const semantic =
+      Option.isSome(typeSafe) &&
+      Redacted.value(typeSafe.value.apiKey).length > 0
+        ? TypeSafeLive.pipe(Layer.provide(NodeHttpClient.layerNodeHttp))
+        : Layer.succeed(JevEngine, {
+            measure: () =>
+              Effect.fail(
+                new JevEngineError({
+                  message: "TypeSafe credentials are not configured",
+                }),
+              ),
+          })
+    // Role and scheduler finalizers must finish before the BioLab Layer closes SQLite.
+    return yield* Effect.scoped(
+      Effect.gen(function* () {
+        const lab = yield* BioLab
+        const jev = yield* JevEngine
+        const selection = yield* OpenRouterModelConfig
+        const roles = yield* acquireRolePrograms({
+          database: ownership.piDatabase,
+          models: createResearchModels(
+            Option.getOrUndefined(openRouterKey),
+            selection,
+          ),
+          model: { provider: "openrouter", modelId: selection.modelId },
+          jev,
+          environment: {
+            nodeBinary: process.execPath,
+            nodeModules: path.join(root, "node_modules"),
+            workerDirectory: path.join(
+              root,
+              "apps/biojev/platform/pi/execution-env",
+            ),
+            artifactDirectory: path.resolve(root, paths.artifactDirectory),
+            workspaceRoot: path.resolve(root, paths.workspaceRoot),
+            ...(yield* LinuxNetworkConfig),
+          },
+        })
+        const commands = yield* acquireMissionLoop(
+          {
+            ...roles,
+            genesis: catalogGenesis(path.resolve(root, paths.genesisCatalog)),
+          },
+          ready,
+        )
+        const server = HttpRouter.serve(
+          makeMissionRoutes(lab, commands, roles.activity),
+        ).pipe(Layer.provide(HttpLive))
+        return yield* Effect.raceFirst(
+          Effect.raceFirst(Layer.launch(server), commands.wait),
+          ownership.lost,
+        )
+      }),
+    ).pipe(
+      Effect.provide(
+        Layer.merge(BioLabLive(ownership.biojevDatabase), semantic),
+      ),
     )
-    const server = HttpRouter.serve(StatusRoute).pipe(
-      Layer.provide(HttpLive),
-      Layer.provide(resources),
-    )
-    return yield* Effect.raceFirst(Layer.launch(server), ownership.lost)
   }),
 ).pipe(Effect.provide(NodeServices.layer))
 

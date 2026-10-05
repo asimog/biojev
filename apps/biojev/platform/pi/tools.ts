@@ -12,7 +12,7 @@ import {
   ResearchObjective,
   ValidationReport,
 } from "../../agents/contracts.ts"
-import { BioLab } from "../../biolab/BioLab.ts"
+import { BioLab, BioLabError } from "../../biolab/BioLab.ts"
 import {
   CanonicalRef,
   CapabilityAssessment,
@@ -129,7 +129,43 @@ export const makeBioLabTools = Effect.fn("Pi.makeBioLabTools")(
       execute: (args, api, context) =>
         emit(
           Schema.decodeEffect(CanonicalRef)(args).pipe(
-            Effect.flatMap(lab.getRecord),
+            Effect.flatMap((ref): Effect.Effect<unknown, BioLabError> => {
+              if (
+                ref.kind === "DiscoveredSource" ||
+                ref.kind === "DiscoveredCapability"
+              )
+                return lab.getDiscoveryCandidate(actor.missionId, ref.id).pipe(
+                  Effect.flatMap((value) =>
+                    ref.kind ===
+                    (value.kind === "source"
+                      ? "DiscoveredSource"
+                      : "DiscoveredCapability")
+                      ? Effect.succeed({ kind: ref.kind, value })
+                      : Effect.fail(
+                          new BioLabError({
+                            code: "INVALID_INPUT",
+                            operation: "read_record",
+                            message: "Discovery reference kind mismatch",
+                          }),
+                        ),
+                  ),
+                )
+              if (ref.kind === "SemanticMeasurement")
+                return lab.getRecord(ref).pipe(
+                  Effect.map((value): unknown => value),
+                  Effect.catchIf(
+                    (error) => error.code === "NOT_FOUND",
+                    () =>
+                      lab.getDiscoveryMeasurement(actor.missionId, ref.id).pipe(
+                        Effect.map((value) => ({
+                          kind: ref.kind,
+                          value,
+                        })),
+                      ),
+                  ),
+                )
+              return lab.getRecord(ref)
+            }),
           ),
           api,
           context,
@@ -170,14 +206,31 @@ export const makeBioLabTools = Effect.fn("Pi.makeBioLabTools")(
     const searchDiscovery = defineTool({
       name: "search_discovery",
       description:
-        "Search retained source/capability candidates, up to 100 per page. Continue with afterId equal to the last returned id. Discovery does not imply qualification.",
+        "Search retained source/capability candidates, up to 100 per page. Each result includes ref: use that exact kind/id with read_record and handoff basisRefs/relevantRefs. Continue with afterId equal to the last returned id. A source/capability category is not a canonical reference kind. Discovery does not imply qualification.",
       parameters: Type.Object({
         text: Type.String(),
         afterId: Type.Optional(Type.String()),
       }),
       replay: "safe",
       execute: ({ text, afterId }, api, context) =>
-        emit(lab.searchDiscovery(actor.missionId, text, afterId), api, context),
+        emit(
+          lab.searchDiscovery(actor.missionId, text, afterId).pipe(
+            Effect.map((candidates) =>
+              candidates.map((candidate) => ({
+                ...candidate,
+                ref: {
+                  kind:
+                    candidate.kind === "source"
+                      ? "DiscoveredSource"
+                      : "DiscoveredCapability",
+                  id: candidate.id,
+                },
+              })),
+            ),
+          ),
+          api,
+          context,
+        ),
     })
     const inspectDiscoveryMeasurement = defineTool({
       name: "inspect_discovery_measurement",

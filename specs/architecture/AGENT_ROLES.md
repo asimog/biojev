@@ -6,8 +6,9 @@ instructions, authorized tools, extensions, working directory, and ExecutionEnv.
 defines ordering. Role programs, instructions and institutional tools now run
 through imported Harness with the [configured provider](PI_COMPATIBILITY.md#production-model-routing)
 or an explicit test catalog/model pair. Tests exercise their real handoffs,
-freshness, timeout and review gates. Production composition, full authenticated mission qualification and observation
-remain pending. Provider smoke verification is separate from mission qualification. Select authorized extensions/tools
+freshness, timeout and review gates. Production composition connects role programs
+to mission HTTP commands and observation. Configured provider/browser verification
+is recorded separately from deterministic full-trajectory qualification. Select authorized extensions/tools
 explicitly for each role; do not infer authority from a shared registry.
 
 | Role | Input | Output | Lifetime |
@@ -37,9 +38,11 @@ Researcher owns local action ordering, search, representation, method, code,
 hypothesis generation, and changes of approach. It may investigate unexpected
 findings, use temporary dependencies, develop capabilities, or omit Jev.
 Long-term learning comes from BioLab rather than an inherited previous transcript.
-A resumed unfinished block retains its existing logical identity and conversation
-where available; it is not a new block. Pause/cancellation instead orphan the
-active investigation; mission resume does not resume that orphan.
+Current recovery conservatively settles unfinished work without replay. It
+retains the old logical identity, provenance and available records, then admits
+fresh legal work. Pause/cancellation orphan the active investigation; mission
+resume does not resume that orphan. Any future explicit continuation of an
+unfinished block must retain its existing identity rather than count a retry.
 
 ## Validator
 

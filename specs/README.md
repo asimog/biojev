@@ -25,8 +25,8 @@ The converged Effect application / Pi Durable architecture in the constitution
 is the design baseline. Pi alone owns ExecutionEnv and runs the three roles. Topic documents own distinct facts; link to their owner instead of
 copying workflow diagrams, record catalogs, or dependency inventories.
 The [Pi compatibility guide](architecture/PI_COMPATIBILITY.md#installed-integration)
-distinguishes tested role/resource/computation paths from pending production
-composition, and owns the three-package Pi dependency decision. The root README
+distinguishes tested role/resource/computation paths and production qualification,
+and owns the three-package Pi dependency decision. The root README
 describes current implementation. The workflows describe obligations, including
-behavior not yet composed into the backend. Dependencies
+behavior and acceptance criteria. Dependencies
 and tooling settings are defined by manifests, lockfile, and editor configuration.

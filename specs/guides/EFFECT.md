@@ -158,3 +158,24 @@ Effect-owned agent/environment is added. Core admission uses retained lifecycle
 facts and invokes the existing Pi Director once the map is ready. Semantic
 failure retains candidates and an explicit failure rather than a fabricated zero.
 The minimal persistence uses the already allowlisted lifecycle SQL surface.
+
+Production mission HTTP uses the installed HttpRouter add/schemaPathParams,
+HttpServerRequest request/schemaBodyJson/schemaSearchParams, MaxBodySize, and
+HttpServerResponse json/stream/type/setHeaders only in http/missions.ts. The
+installed checker identifies the overloaded setHeaders call as the response
+module; that module allowance is confined to this file. Other unstable APIs
+remain strict. Its transport test separately allowlists serve, HttpClient and
+request post/bodyText/setHeader. SSE disconnect cancels observation only, not
+the independently scoped mission fiber.
+
+The imported-Pi HTTP lifecycle test in platform/pi/mission.test.ts uses the same
+serve/client/request surface, allowlisted only for that file. History responses
+carry a retained-record cursor so reconnecting/polling UI clients append immutable
+records without resetting previously loaded pages. Empty pages preserve the
+cursor; it is an observation token, not institutional authority.
+
+An unavailable or malformed deployment catalog records an explicit FAILED Genesis
+snapshot. Empty discovery skips semantic transport; it cannot satisfy readiness.
+Correcting/replacing the configured catalog and explicitly retrying uses the same
+BioLab/Genesis path. No provider-specific branch or alternate execution system is
+introduced.

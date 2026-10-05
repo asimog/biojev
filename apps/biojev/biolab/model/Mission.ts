@@ -1,6 +1,9 @@
 import { Schema } from "effect"
 
-export const MissionId = Schema.NonEmptyString.check(Schema.isMaxLength(128))
+export const MissionId = Schema.NonEmptyString.check(
+  Schema.isMaxLength(128),
+  Schema.isPattern(/^[A-Za-z0-9][A-Za-z0-9_-]*$/),
+)
 export const MissionStatement = Schema.NonEmptyString.check(
   Schema.isMaxLength(100_000),
 )

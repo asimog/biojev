@@ -9,7 +9,7 @@ Effect manages Pi Harness lifetime; ExecutionEnv is never an Effect-owned peer.
 Ownership here describes the target architecture, not a claim that upstream
 Pi provides host isolation automatically. The Linux adapter and cleanup are now
 qualified inside the Pi integration and bound to the role programs. Production
-backend composition remains pending.
+composition connects those programs to the owned scheduler and HTTP interfaces.
 
 The seam exposes role configuration and handoffs without propagating Pi types
 into domain modules. Acquire Harness as a scoped infrastructure resource.
@@ -67,8 +67,9 @@ their own authorized extension, submit upstream input and terminate via the
 upstream handoff tool control. Timeout and interruption bridge to explicit
 abort, idle and environment cleanup before canonical settlement. Mission-loop
 tests cover commands and the ten-block gate, including failed review attempts.
-A committed live projection is implemented; its HTTP/UI integration and
-production wiring remain pending. No upstream cognition
+A committed live projection is connected to HTTP/SSE and the Next.js UI.
+Production checks cover real model-turn recovery, retained Researcher results,
+and active SIGTERM settlement before BioLab closes. No upstream cognition
 or task machinery is copied.
 
 ## Production model routing

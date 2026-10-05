@@ -80,16 +80,16 @@ specifications.
 
 ### Verified starting point
 
-| Area | Working now | Still required |
+| Area | Working now | Qualification |
 | --- | --- | --- |
-| Observation | Real backend IDLE response and server-rendered UI | Lifecycle commands, dynamic state, history queries, live events |
-| Core | Legal-action policy and application command/mission-loop programs, exercised through imported Pi | Production composition and process-crash/shutdown qualification |
-| BioLab | Migrated mission/revision, science, Genesis and lifecycle storage; immutable authorized records, discovery/Refresh, semantic/capability recording, validation/review gates, receipts/artifacts and memory reads | Full capability reuse and production qualification |
-| Pi | Imported scoped Harness and role programs; persistent Director, fresh Researcher/Validator, explicit abort/idle/cleanup and conservative restart reconciliation; qualified OpenRouter routing | Live authenticated provider verification, committed activity projection and production wiring |
-| Computation | Imported Pi files/shell inside Linux isolation; real role binding; trusted receipts and content-hash artifacts; explicit descendant/workspace cleanup | Production host configuration and process-crash qualification |
-| Jev | Imported TypeSafe SDK over Effect HTTP; versioned questions/projections, native response validation/cancellation, authorized retention, role tools and Genesis discovery | Production mission composition and qualification |
-| Startup | Exclusive advisory ownership of both stores before backend storage/Harness acquisition | Continuous mission scheduling and reconciliation |
-| Feedback | Strict typecheck, Effect diagnostics, boundaries, lint, behavioral tests, and workspace builds | Additional checks with each slice |
+| Observation | Mission command/history/SSE HTTP routes and Next.js command/observation UI; dynamic scheduler status | Populated desktop/mobile browser, reload, outage and restart checks pass; block inspector shows the latest 50 blocks, retained history is paginated |
+| Core | Legal-action policy, composed continuous scheduler, and HTTP commands exercised through imported Pi | SIGKILL/reopen, missing runtime state and active SIGTERM checks pass |
+| BioLab | Migrated mission/revision, science, Genesis and lifecycle storage; immutable authorized records, discovery/Refresh, semantic/capability recording, validation/review gates, receipts/artifacts and memory reads | Fresh Researcher/Validator reuse, Director selection/rollback and immutable crash recovery pass |
+| Pi | Imported scoped Harness and role programs; persistent Director, fresh Researcher/Validator, explicit abort/idle/cleanup and conservative restart reconciliation; qualified OpenRouter routing | Real OpenRouter calls, committed model/tool/usage projection and composed HTTP scheduling verified |
+| Computation | Imported Pi files/shell inside Linux isolation; real role binding; trusted receipts and content-hash artifacts; explicit descendant/workspace cleanup | Configured Linux computation produces retained results; interrupted-run recovery preserves them |
+| Jev | Imported TypeSafe SDK over Effect HTTP; versioned questions/projections, native response validation/cancellation, authorized retention, role tools and Genesis discovery | Real TypeSafe Genesis measurement and deterministic native transport checks pass |
+| Startup | Exclusive advisory ownership of both stores before backend storage/Harness acquisition; composed continuous scheduler | Same-store reopen and active shutdown settle before SQLite release |
+| Feedback | Strict typecheck, Effect diagnostics, boundaries, lint, behavioral tests, and workspace builds | Full feedback passes without weakened diagnostics |
 
 ### Execution progress
 
@@ -102,9 +102,10 @@ specifications.
 | G | Genesis lifecycle implemented | Generic discovery/Jev program, broad retained candidates, explicit partial failures, transactional inaugural handoff, Refresh preservation and reopen; actual external catalog ingestion deferred |
 | 5 | Role/block path qualified | Actual Python and shell outputs, honest no-results dossiers, persistent Director/fresh Researcher, explicit Pi timeout abort, cancellation/orphans, and fresh work after pause |
 | 6 | Validation/review gate qualified | Exact ten-block window through actual Pi roles; failed Validator and Director attempts preserve gates; fresh Validator retry; explicit reviewed report before block eleven; canonical gate survives SQLite reopen |
-| 7 | Application programs implemented; production qualification pending | Continuous command-driven fixture covers commands and cleanup; reopen preserves orphan identity without unsafe replay, including absent Pi state. HTTP composition and process-crash/shutdown checks remain; provider smoke is separate |
-| 8 | Transport qualified; institutional recording/tools implemented | TypeSafe SDK/local HTTP tests cover primitives, native validation, identity and cancellation; full capability reuse and production wiring still require qualification |
-| 9–10 | Pending | Complete observation/UI and all full-v0 acceptance checks |
+| 7 | Qualified | Actual HTTP start/pause/resume/revision/stop drives imported Pi and real BioLab; acknowledgements await cleanup. SSE disconnect leaves cognition running. Reopen preserves orphan identity without unsafe replay, including absent Pi state. Production SIGKILL/reopen and active SIGTERM checks pass; provider smoke remains separate from deterministic trajectory qualification |
+| 8 | Transport and capability reuse path qualified | Actual Pi tools retain two qualified versions; reopened BioLab supplies an implementation to a fresh Validator environment; Validator activation is denied; Director selection, rollback and clearing preserve history. Fresh Researcher and Validator reuse are qualified |
+| 9 | Qualified | Cursor-based append-only history, actual committed tool activity and requested/reported model identity; populated desktop/mobile, reload, outage, restart and actual browser commands pass |
+| 10 | Qualified for local Linux v0 | Full deterministic trajectory, configured-provider operator checks, populated observation and final feedback/release audit pass |
 
 The goal remains the complete v0 path. Foundational tests establish only the
 behaviors they exercise; they do not establish autonomous research.
@@ -126,7 +127,7 @@ model or a mandate to create every listed table.
   replace full mission qualification.
 - Establish exclusive scheduler/store ownership before opening Pi storage. Keep canonical and runtime databases distinct; configuration must reject the same resolved store. Release ownership after resource cleanup.
 - Keep source content and scientific representations open. Stable institutional references, provenance, and actual boundary validation are required; a complete biological ontology or universal source schema is not.
-- Use generic human command, history-read, and activity-stream interfaces. Preserve the existing status path while extending it with real lifecycle projections. Define new route payloads with each implemented command; the specs do not yet settle their URLs or field names.
+- Use the implemented mission command, history-read, and SSE snapshot interfaces in http/missions.ts and the validated view contracts in http/views.ts. Preserve the status path; add route payloads only for implemented behavior.
 - Research uses one role at a time; computation inside that role may be parallel. Never install subagent tools or allow detached scientific work to evade abort and block cleanup.
 - Current restart policy explicitly aborts interrupted runtime work before enabling Pi scheduling, then settles its original institutional identity with the actual deadline, retained dossier and available records. Unknown outcomes stay failed/orphaned rather than replayed. Missing runtime state follows the same conservative policy. Exact continuation of interrupted cognition is not required for v0.
 - Command acknowledgement follows canonical state change and owned-work cleanup. Revision retains its history and invalidates an unused objective from the previous direction; revision of active research orphans that work before the next Director decision.
@@ -236,8 +237,10 @@ Genesis and later Refresh do not advance validation cadence.
 
 Qualify alternative source-agnostic discovery programs, partial failure,
 insufficient-map rejection, retry/reopen, stale mission revision, and completion
-requiring both inaugural references. Real GDC/bio.tools ingestion is deferred;
-source choices live in deployment configuration rather than Core.
+requiring both inaugural references. Provider-specific ingestion is deferred;
+source choices live in deployment configuration rather than Core. Do not add
+GDC/bio.tools branches, mandatory provider slots, or source-specific completion
+conditions anywhere in application lifecycle code.
 
 
 Implement role configuration, instructions, and authorized tools. Director
@@ -377,8 +380,8 @@ The plan was synthesized from every document in specs, the glossary, repository
 instructions, current code/tests/configuration, and installed package inventory.
 Topic specifications keep ownership of detailed contracts and tooling settings;
 the plan does not repeat their dependency inventories or implementation trees.
-Implementation is in progress. The progress table distinguishes verified paths
-from required future behavior; autonomous research is not yet running.
+The progress table records completed v0 paths and their qualification evidence. Configured autonomous research has produced real
+results in operator verification; deterministic tests qualify the full trajectory.
 
 All ten slices contribute to the complete v0. Validator is required before
 continuous scheduling, and semantic tools/capability learning are implemented
@@ -387,19 +390,18 @@ is documented by ExecutionEnv; production bindings, new route payloads, and
 minimal persistence representation are concrete decisions for their respective
 slices, not a settled scientific-domain prerequisite.
 
-The next implementation task after Genesis qualification is slice 7 production composition: validated HTTP
-mission commands, the configured imported model provider, owned workspace settings,
-and process-crash/shutdown qualification.
-Continue through all remaining slices
-to the complete v0 rather than treating foundational qualification as completion.
+Production composition now exposes validated mission HTTP commands and observation
+routes, configured imported providers, owned workspace settings, and a Next.js
+command/observation UI. Production crash/shutdown and HTTP-to-imported-Pi
+lifecycle checks now complement the deterministic institutional trajectory.
 
-## Genesis qualification and remaining v0 release checks
+## Genesis and v0 qualification
 
-The Genesis specification is integrated into v0. Its implemented minimal
-checkpoints are READY_FOR_DIRECTION, FAILED, and COMPLETED; NOT_STARTED is an
-absent snapshot. DISCOVERING and DIRECTOR_RUNNING describe active orchestration
-phases. Durable active-phase/activity exposure belongs to production composition;
-do not claim it exists merely because the schema lists those phases.
+The Genesis specification is integrated into v0. BioLab persists DISCOVERING,
+READY_FOR_DIRECTION, DIRECTOR_RUNNING, FAILED, and COMPLETED; NOT_STARTED is an
+absent snapshot. Deterministic integration checks observe discovery during Jev
+measurement and the inaugural Director's admitted phase. Settlement restores
+readiness after interruption; completion still requires both inaugural references.
 
 | Genesis invariant | Qualification evidence |
 | --- | --- |
@@ -419,14 +421,69 @@ deterministic responses, and actual controlled computation. It is application
 end-to-end qualification, not a live GDC/bio.tools ingestion or browser-driven
 mission claim. Actual external catalog ingestion remains intentionally deferred.
 
-Full production v0 is **not yet release-qualified**. Remaining release checks
-are production mission HTTP commands/scheduling/reconciliation, complete
-activity/history API and UI, process-crash/shutdown checks at that composition,
-and full capability reuse/selection qualification. These remain the acceptance
-criteria for slices 7–10; initialization tests do not waive them. No fake activity
-or autonomous deployed research is introduced by this architecture task.
+Local Linux v0 is qualified against the acceptance checks below. This is a
+single-operator loopback deployment, with configured Linux isolation prerequisites,
+provider credentials and a supplied catalog. External catalog ingestion is still
+intentionally deferred. A paid-provider ten-block scientific trajectory was not
+claimed: deterministic imported-Pi tests qualify that trajectory, and configured
+provider/operator checks separately verify real transport and computation.
 
-Verification on 2026-10-05: `npm run check` passed 39 tests in 14 files,
+| Acceptance area | Evidence |
+| --- | --- |
+| Full institutional trajectory | Main mission fixture: Genesis, inaugural Director, ten countable blocks, fresh Validator, failed/retried review, block eleven |
+| Commands and observer independence | Imported-Pi HTTP fixture: start, pause, resume, revise, stop, SSE disconnect, acknowledged cleanup |
+| Failure and recovery | Timeout/tool abort, orphan handling, interrupted unsafe tools, missing Pi state, real production SIGKILL/reopen and active SIGTERM |
+| Canonical recording | Real SQLite authority/revision/immutability tests; real operation receipts; five retained results unchanged after production recovery |
+| General computation and capability reuse | Python/shell/representation variation, public retrieval, host access denial, parallel/descendant cleanup, artifacts restored into fresh roles; qualified version selection/rollback |
+| Observation | Actual model/tool/command/output and catalog usage estimates; paginated retained history; populated browser commands, reload/mobile, outage and restart |
+| Source independence | No source-specific branches in application/tooling; swappable catalog identities, broad retention, semantic failure, separate Refresh |
+| Feedback and dependency review | Strict diagnostics, boundaries, lint, 43 behavioral tests, both workspace typechecks/builds; npm audit reports zero vulnerabilities |
+
+Populated observation artifacts are at `/tmp/biojev-populated-observation-g07w3seh`.
+Ten checks passed with the existing five real results and orphan history, including
+both store integrity checks. The block inspector is a recent-50 view; the durable
+record history uses append-only cursor pagination. Usage cost is explicitly a
+catalog estimate, and provider billing is unavailable. Public/multi-user hosting,
+aggregate workspace/memory quotas, and automatic external catalog ingestion are
+not qualified by this local v0 result; the execution guide records actual limits.
+
+Live provider/browser qualification admitted a real mission, retained a
+TypeSafe Genesis measurement, completed the inaugural Director handoff, and
+admitted ResearchBlock #1. Browser pause settled Pi work as a cancelled orphan;
+populated reload/mobile layout and explicit stop passed. This smoke stops before
+a completed research dossier and does not replace crash/ten-block qualification.
+Artifacts are at `/tmp/biojev-live-mission-fixed-42wnwnpf`.
+The first live attempt exposed rejected discovery references in Director handoffs. BioLab
+now resolves those references with mission/kind checks, and discovery tool results
+include explicit canonical references instead of requiring the model to infer a
+reference kind from the source/capability category. Deterministic regressions pass;
+the successful rerun qualifies the first-block/control path only.
+
+Production crash checks at `/tmp/biojev-crash-production-kkhd6mwe` forced SIGKILL
+during a real Pi model turn, reopened the same stores, observed canonical recovery
+failure attribution and settled pause, then removed the temporary runtime database
+and verified institutional history survived. This qualifies cognitive crash
+reconciliation, not an interrupted scientific process/recording transaction.
+The first browser smoke loaded credentials but omitted this host's `.env` network
+configuration; it therefore does not qualify real production computation. The
+completed-result smoke loads both configured environment files and is separate.
+
+That observation window ended before the dossier. Real controlled computation
+retained five ScientificResults, interpretations, assessments and uncertainty;
+it did not qualify a completed live-provider block. Reopening its stores at
+`/tmp/biojev-science-recovery-dcnofgps` settled the interrupted Researcher as a
+failed orphan while preserving all five result bodies unchanged. Active Pi
+SIGTERM verification at `/tmp/biojev-graceful-shutdown-4yzjwhv_` settled its run
+in 57 ms before storage release. The production composition now scopes role and
+scheduler finalizers inside the BioLab Layer lifetime. Automated capability
+reuse checks cover both fresh Researcher and Validator environments.
+
+Current feedback verification passes 43 tests in 16 files, strict Effect
+diagnostics, boundaries, lint, both workspace typechecks and builds. The acceptance
+matrix combines deterministic trajectory qualification with separate real operator
+evidence; obtained results alone are not treated as a completed research block.
+
+Earlier foundation verification on 2026-10-05: `npm run check` passed 39 tests in 14 files,
 zero Effect errors/warnings/messages, typechecking, boundaries, lint and both
 workspace builds. A fresh production Chromium run passed eight backend/UI checks:
 real status, competing-owner rejection, render/hydration, reload, mobile layout,

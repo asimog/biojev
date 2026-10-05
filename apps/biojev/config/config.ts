@@ -47,3 +47,15 @@ export const TypeSafeConfig = Config.all({
     Config.withDefault("jev-latest"),
   ),
 })
+
+export const ApplicationPaths = Config.all({
+  genesisCatalog: Config.String("BIOJEV_GENESIS_CATALOG").pipe(
+    Config.withDefault("data/genesis.json"),
+  ),
+  artifactDirectory: Config.String("BIOJEV_ARTIFACT_DIRECTORY").pipe(
+    Config.withDefault("data/artifacts"),
+  ),
+  workspaceRoot: Config.String("BIOJEV_WORKSPACE_ROOT").pipe(
+    Config.withDefault("data/workspaces"),
+  ),
+})

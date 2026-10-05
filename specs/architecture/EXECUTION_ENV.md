@@ -33,8 +33,10 @@ coding tools only when supplied an environment factory. The Linux implementation
 now imports NodeExecutionEnv inside Bubblewrap and implements the portable Pi
 contract through a private transport. Tests connect this factory to imported
 Harness and bundled write/bash tools. Role programs supply this factory with
-trusted run identity and BioLab receipt recording. Production composition remains
-pending; the status backend does not enable computation automatically.
+trusted run identity and BioLab receipt recording. Production composition supplies
+the configured factory to role programs; observation without provider credentials
+does not schedule computation. Load both host `.env` and credential `.env.local`
+when verifying the configured deployment.
 
 ## Qualified Linux mechanism
 

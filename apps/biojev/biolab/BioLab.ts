@@ -158,7 +158,11 @@ export class BioLab extends Context.Service<
       after?: number,
       limit?: number,
     ) => Effect.Effect<
-      { records: ReadonlyArray<RetainedRecord>; next: number | null },
+      {
+        records: ReadonlyArray<RetainedRecord>
+        next: number | null
+        cursor: number
+      },
       BioLabError
     >
     readonly recordSemanticMeasurement: (
@@ -185,6 +189,10 @@ export class BioLab extends Context.Service<
       text: string,
       afterId?: string,
     ) => Effect.Effect<ReadonlyArray<DiscoveredCandidate>, BioLabError>
+    readonly getDiscoveryCandidate: (
+      missionId: string,
+      candidateId: string,
+    ) => Effect.Effect<DiscoveredCandidate, BioLabError>
     readonly getDiscoveryMeasurement: (
       missionId: string,
       measurementId: string,
@@ -197,6 +205,7 @@ export class BioLab extends Context.Service<
     ) => Effect.Effect<GenesisSnapshot | null, BioLabError>
     readonly recordGenesisDiscovery: (
       input: GenesisDiscovery,
+      phase?: "DISCOVERING",
     ) => Effect.Effect<GenesisSnapshot, BioLabError>
     readonly getLifecycle: (
       missionId: string,

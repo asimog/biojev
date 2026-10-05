@@ -417,7 +417,14 @@ export const acquireRolePrograms = Effect.fn("Pi.acquireRolePrograms")(
     })
     const activity = Effect.fn("Pi.activity")(function* (missionId: string) {
       const runs = yield* lab.getRuns(missionId)
-      const recent = runs.slice(-20)
+      const recent = runs
+        .slice(-20)
+        .filter(
+          (run, index, list) =>
+            !list
+              .slice(index + 1)
+              .some((other) => other.conversationId === run.conversationId),
+        )
       return yield* Effect.forEach(recent, (run) =>
         promise(run.role, async () => {
           const conversation = await findConversation(run.conversationId)
@@ -431,6 +438,39 @@ export const acquireRolePrograms = Effect.fn("Pi.acquireRolePrograms")(
           return conversation.commit(async (tx) => {
             const live = await tx.doc(LiveDoc, conversation.id)
             const usage = await tx.doc(UsageDoc, conversation.id)
+            const entries = await tx.scanEntries(
+              { conversationId: conversation.id },
+              50,
+            )
+            const messages = entries.items.flatMap((entry) => entry.model ?? [])
+            const calls = messages.flatMap((message) =>
+              message.role === "assistant"
+                ? message.content.filter(
+                    (content) => content.type === "toolCall",
+                  )
+                : [],
+            )
+            const lastModel = messages.find(
+              (message) => message.role === "assistant",
+            )
+            const recentTools = messages
+              .flatMap((message) =>
+                message.role === "toolResult"
+                  ? [
+                      {
+                        id: message.toolCallId,
+                        name: message.toolName,
+                        status: message.isError ? "failed" : "completed",
+                        output: message.content
+                          .filter((content) => content.type === "text")
+                          .map((content) => content.text)
+                          .join("\n")
+                          .slice(0, 8192),
+                      },
+                    ]
+                  : [],
+              )
+              .slice(0, 10)
             return {
               runId: run.runId,
               role: run.role,
@@ -438,18 +478,42 @@ export const acquireRolePrograms = Effect.fn("Pi.acquireRolePrograms")(
               state: run.status,
               startedAt: run.createdAt,
               runtimeAvailable: true,
+              requestedModel: {
+                provider: model.provider,
+                modelId: model.modelId,
+              },
+              actualModel:
+                lastModel?.role === "assistant"
+                  ? {
+                      provider: lastModel.provider,
+                      modelId: lastModel.responseModel ?? lastModel.model,
+                    }
+                  : null,
+              recentTools,
               modelActive:
                 run.status === "ACTIVE" && live?.generation !== undefined,
               tools:
                 run.status === "ACTIVE"
-                  ? (live?.tools ?? []).map((tool) => ({
-                      name: tool.name,
-                      status: tool.status,
-                      output: tool.output ?? null,
-                      diagnostics: tool.diagnostics ?? [],
-                    }))
+                  ? (live?.tools ?? []).map((tool) => {
+                      const command = calls.find(
+                        (call) =>
+                          call.id === tool.callId && call.name === "bash",
+                      )?.arguments.command
+                      return {
+                        id: tool.callId,
+                        name: tool.name,
+                        status: tool.status,
+                        command: typeof command === "string" ? command : null,
+                        output: tool.output ?? null,
+                      }
+                    })
                   : [],
-              usage: usage ?? null,
+              usage:
+                usage === undefined
+                  ? null
+                  : Schema.decodeUnknownSync(Schema.JsonObject)(
+                      JSON.parse(JSON.stringify(usage)),
+                    ),
             }
           }, BACKGROUND_CONTEXT)
         }),

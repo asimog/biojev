@@ -18,8 +18,8 @@ activity and institutional history and sends explicit human commands.
 
 ## Current implementation
 
-The scaffold provides a real Effect backend `GET /api/status` returning IDLE,
-a Next.js page reading that response, pure lifecycle policy, and domain
+The application provides a real Effect backend `GET /api/status`,
+mission command/history/SSE endpoints, a Next.js mission UI, pure lifecycle policy, and domain
 contracts, migrated BioLab mission/revision storage, and scoped imported Pi
 SQLite/Harness resources. Startup locks both stores before opening them.
 Deterministic runtime tests cover model/tool execution, abort versus cancelled
@@ -36,11 +36,18 @@ Role programs now run a persistent Director, fresh Researcher and fresh Validato
 through imported Pi, with canonical handoffs, timeout/pause cleanup and the exact
 ten-block review barrier. The command-driven mission loop and conservative
 restart reconciliation are tested with real stores and deterministic models.
-They are not yet composed into the status backend. The selected OpenRouter
+Production composition now connects those role programs and the scheduler to HTTP.
+The selected OpenRouter
 routing is configured through imported Pi; TypeSafe semantic transport is
 implemented and qualified against local HTTP fixtures. Production role/HTTP
-wiring, canonical Jev recording/tools, capability learning, live history/UI and full process-crash
-qualification remain unfinished. Validator is required for v0.
+wiring is implemented. Canonical Jev/capability tools and activity projections are
+present. Imported-Pi tests qualify capability reuse in fresh Researcher/Validator
+environments and Director selection/rollback. Production checks qualify cognitive
+crash recovery, interrupted Researcher recovery with unchanged results, and active
+SIGTERM settlement before SQLite release. Populated desktop/mobile observation,
+reload, outage and restart checks pass. Local Linux v0 is qualified with a
+deterministic complete trajectory and separate configured-provider checks; a full
+paid-provider research window is not claimed. Validator is required for v0.
 
 Speculative runtime/execution Services, role/tool factories, and comment-only
 implementation files were removed. Implementation directories are created when
@@ -61,7 +68,10 @@ Installed dependencies and editor requirements live in manifests, lockfile, and
 Backend provider credentials and model choices belong in ignored root `.env.local`; `.env.example` lists
 the names. [Pi routing](specs/architecture/PI_COMPATIBILITY.md#production-model-routing)
 and [Jev transport](specs/architecture/JEVENGINE.md#typesafe-provider) own provider
-configuration and verification status. The status-only backend needs no model keys.
+configuration and verification status. Observation works without model keys;
+start/resume/revision execution requires both configured providers. The deployment
+is local and single-operator: both servers bind loopback. The browser sends commands
+through a same-origin, bounded JSON proxy; backend credentials stay server-side.
 Tracked Effect and TypeSafe reference subtrees live under repos/; production
 code never imports them. Pi is imported only from installed npm packages; its
 former source subtree has been removed.
@@ -71,5 +81,7 @@ program, broad BioLab candidates, Jev measurement, and the existing inaugural
 Director. Refresh preserves completed initialization. See
 [Genesis](specs/architecture/GENESIS.md) and the
 [v0 implementation plan](specs/IMPLEMENTATION_PLAN.md) for scope and qualification.
-External catalog ingestion and production mission command/UI composition remain
-pending; the backend still serves its real status path.
+External catalog ingestion remains deferred. `BIOJEV_GENESIS_CATALOG` selects a
+trusted deployment JSON catalog; source names and scientific abilities are data,
+not application branches. Missing/invalid catalogs park scheduling with an explicit
+failure rather than fabricating discovery. The program can be replaced at composition.

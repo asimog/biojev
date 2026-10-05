@@ -38,7 +38,10 @@ and validation/report/review transitions are transactional. A retained dossier
 does not count its block before runtime and environment cleanup succeeds.
 Canonical operation history is queryable after reopening; tools do not depend
 on an in-memory receipt list. Authorized semantic and capability persistence/tools are implemented; full
-production wiring and capability-reuse qualification remain pending.
+production composition connects these operations to Pi role tools. Reuse is
+qualified in fresh Researcher and Validator environments, with immutable versions,
+independent assessment, Director default selection/rollback, and activation denial
+for non-Director roles.
 
 ## Record families
 

@@ -3,15 +3,20 @@ import { BioLab, BioLabError } from "../biolab/BioLab.ts"
 import { type NextAction, nextAction } from "./next-action.ts"
 
 // Programs are supplied by application composition. Core chooses legal work only.
-export const advanceMission = Effect.fn("Core.advanceMission")(function* <E, R>(
+export const advanceMission = Effect.fn("Core.advanceMission")(function* <
+  E,
+  R,
+  GE = E,
+  GR = R,
+>(
   missionId: string,
   programs: {
-    readonly genesis?: (missionId: string) => Effect.Effect<unknown, E, R>
+    readonly genesis?: (missionId: string) => Effect.Effect<unknown, GE, GR>
     readonly director: (missionId: string) => Effect.Effect<unknown, E, R>
     readonly researcher: (missionId: string) => Effect.Effect<unknown, E, R>
     readonly validator: (missionId: string) => Effect.Effect<unknown, E, R>
   },
-): Effect.fn.Return<NextAction, E | BioLabError, R | BioLab> {
+): Effect.fn.Return<NextAction, E | GE | BioLabError, R | GR | BioLab> {
   const lab = yield* BioLab
   const state = yield* lab.getLifecycle(missionId)
   const action = nextAction({

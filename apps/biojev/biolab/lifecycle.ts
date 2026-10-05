@@ -54,6 +54,7 @@ export const makeLifecycle = (
     refs: (
       refs: ReadonlyArray<CanonicalRef>,
       expectedKind?: string,
+      missionId?: string,
     ) => Effect.Effect<void, BioLabError | SqlError.SqlError>
   },
 ) => {
@@ -99,6 +100,25 @@ export const makeLifecycle = (
       decode(Schema.fromJsonString(DiscoveredCandidate), row.body),
     )
   }, checked)
+  const getDiscoveryCandidate = Effect.fn("BioLab.getDiscoveryCandidate")(
+    function* (missionId: string, candidateId: string) {
+      yield* deps.getMission(missionId)
+      const rows = yield* sql<{
+        body: string
+      }>`SELECT body FROM discovered_candidates WHERE missionId = ${missionId} AND id = ${candidateId}`
+      if (rows.length === 0)
+        return yield* new BioLabError({
+          code: "NOT_FOUND",
+          operation: "getDiscoveryCandidate",
+          message: "Discovery candidate not found",
+        })
+      return yield* decode(
+        Schema.fromJsonString(DiscoveredCandidate),
+        rows[0].body,
+      )
+    },
+    checked,
+  )
   const getDiscoveryMeasurement = Effect.fn("BioLab.getDiscoveryMeasurement")(
     function* (missionId: string, measurementId: string) {
       yield* deps.getMission(missionId)
@@ -119,7 +139,11 @@ export const makeLifecycle = (
     checked,
   )
   const recordGenesisDiscovery = Effect.fn("BioLab.recordGenesisDiscovery")(
-    function* (input: GenesisDiscovery, refresh = false) {
+    function* (
+      input: GenesisDiscovery,
+      refresh = false,
+      phase?: "DISCOVERING",
+    ) {
       const value = yield* decode(GenesisDiscovery, input)
       return yield* atomic(
         Effect.gen(function* () {
@@ -203,9 +227,11 @@ export const makeLifecycle = (
               previous?.startedAt ??
               DateTime.toEpochMillis(yield* DateTime.now),
             completedAt: null,
-            status: genesisMapSufficient(retained)
-              ? "READY_FOR_DIRECTION"
-              : "FAILED",
+            status:
+              phase ??
+              (genesisMapSufficient(retained)
+                ? "READY_FOR_DIRECTION"
+                : "FAILED"),
             inauguralDirectorDecisionId: null,
             initialResearchObjectiveId: null,
           }
@@ -372,7 +398,8 @@ export const makeLifecycle = (
           const genesis = yield* getGenesis(run.missionId)
           if (
             !current.genesisComplete &&
-            (genesis?.status !== "READY_FOR_DIRECTION" ||
+            ((genesis?.status !== "READY_FOR_DIRECTION" &&
+              genesis?.status !== "DIRECTOR_RUNNING") ||
               genesis.missionRevision !== current.mission.revision)
           )
             return yield* reject(
@@ -389,10 +416,11 @@ export const makeLifecycle = (
             return yield* reject(
               "Director must cite the pending validation report",
             )
-          yield* deps.refs([
-            ...value.basisRefs,
-            ...value.nextObjective.relevantRefs,
-          ])
+          yield* deps.refs(
+            [...value.basisRefs, ...value.nextObjective.relevantRefs],
+            undefined,
+            run.missionId,
+          )
           const ref = yield* put(run, value.decisionId, {
             kind: "DirectorDecision",
             value,
@@ -501,9 +529,17 @@ export const makeLifecycle = (
         yield* deps.refs(value.scientificResultRefs, "ScientificResult")
         yield* deps.refs(value.resultAssessmentRefs, "ResultAssessment")
         yield* deps.refs(value.interpretationRefs, "Interpretation")
-        yield* deps.refs(value.semanticMeasurementRefs, "SemanticMeasurement")
+        yield* deps.refs(
+          value.semanticMeasurementRefs,
+          "SemanticMeasurement",
+          run.missionId,
+        )
         yield* deps.refs(value.failureRefs, "Failure")
-        yield* deps.refs([...value.hypothesisRefs, ...value.capabilityRefs])
+        yield* deps.refs(
+          [...value.hypothesisRefs, ...value.capabilityRefs],
+          undefined,
+          run.missionId,
+        )
         const ref = yield* put(run, value.dossierId, {
           kind: "ResearchDossier",
           value,
@@ -634,7 +670,7 @@ export const makeLifecycle = (
             return yield* reject(
               "Validator must report on the exact ten-block trajectory",
             )
-          yield* deps.refs(value.importantRefs)
+          yield* deps.refs(value.importantRefs, undefined, run.missionId)
           const ref = yield* put(run, value.reportId, {
             kind: "ValidationReport",
             value,
@@ -684,9 +720,11 @@ export const makeLifecycle = (
     refreshDiscovery: (input: GenesisDiscovery) =>
       recordGenesisDiscovery(input, true).pipe(Effect.asVoid),
     getDiscoveryMeasurement,
+    getDiscoveryCandidate,
     searchDiscovery,
     getGenesis,
-    recordGenesisDiscovery,
+    recordGenesisDiscovery: (input: GenesisDiscovery, phase?: "DISCOVERING") =>
+      recordGenesisDiscovery(input, false, phase),
     getLifecycle,
     getRuns,
     setMissionStatus,
