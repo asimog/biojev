@@ -6,6 +6,7 @@ import { type NextAction, nextAction } from "./next-action.ts"
 export const advanceMission = Effect.fn("Core.advanceMission")(function* <E, R>(
   missionId: string,
   programs: {
+    readonly genesis?: (missionId: string) => Effect.Effect<unknown, E, R>
     readonly director: (missionId: string) => Effect.Effect<unknown, E, R>
     readonly researcher: (missionId: string) => Effect.Effect<unknown, E, R>
     readonly validator: (missionId: string) => Effect.Effect<unknown, E, R>
@@ -19,6 +20,25 @@ export const advanceMission = Effect.fn("Core.advanceMission")(function* <E, R>(
     paused: state.mission.status === "PAUSED",
   })
   switch (action) {
+    case "RUN_GENESIS": {
+      const genesis = yield* lab.getGenesis(missionId)
+      if (
+        genesis?.status === "READY_FOR_DIRECTION" &&
+        genesis.missionRevision === state.mission.revision
+      ) {
+        yield* programs.director(missionId)
+        break
+      }
+      if (programs.genesis === undefined)
+        return yield* new BioLabError({
+          code: "CONFLICT",
+          operation: "advanceMission",
+          message:
+            "Genesis discovery program must be supplied by application composition",
+        })
+      yield* programs.genesis(missionId)
+      break
+    }
     case "RUN_DIRECTOR":
       yield* programs.director(missionId)
       break

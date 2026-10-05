@@ -20,7 +20,7 @@ Search generates possibilities. Jev measures semantic properties. An agent
 chooses consequences. High confidence does not select an objective, accept a
 hypothesis, launch computation, or activate a capability automatically.
 
-Future role tools call this interface through authorized application programs.
+Authorized role tools call this interface when trusted composition supplies Jev through authorized application programs.
 Harness acquisition and CodingTools registration do not install semantic-provider
 credentials or enable Jev role tools. Provider integration stays local here;
 Pi receives the tool's semantic result rather than the provider implementation.
@@ -49,8 +49,8 @@ are typed failures; they never become zero. Measurements preserve projection and
 question versions, exact request hash, actual model, native answer/usage, and the
 request receipt when supplied. No semantic threshold selects a research action.
 Local HTTP tests qualify all three primitives, malformed responses, HTTP failure,
-and cancellation. Authorized BioLab retention and role-tool binding remain
-unfinished; returning a structurally valid measurement does not confer canonical
+and cancellation. Authorized BioLab retention and role-tool binding are implemented but production
+composition remains unfinished; returning a structurally valid measurement does not confer canonical
 recording authority. Live authenticated verification remains separate.
 
 ## Retained measurements
@@ -68,3 +68,13 @@ rather than convert them to zero scores.
 
 [Workflows](../workflows/README.md#optional-semantic-judgment) provides examples;
 [authority](CONSTITUTION.md#authority-and-recording-permissions) assigns decisions to agents.
+
+## Genesis integration
+
+Genesis requires broad semantic discovery through this same Jev interface.
+Measurements annotate or order retained candidate views without reducing the
+canonical candidate set, selecting objectives, or activating capabilities.
+Individual ResearchBlocks remain free to omit Jev.
+
+[Genesis](GENESIS.md) owns initialization lifecycle, provenance, partial-failure
+policy, and the distinction from later Refresh.

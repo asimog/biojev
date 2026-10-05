@@ -15,6 +15,11 @@ import type {
   Uncertainty,
 } from "./model/Domain.ts"
 import type {
+  DiscoveredCandidate,
+  GenesisDiscovery,
+  GenesisSnapshot,
+} from "./model/Genesis.ts"
+import type {
   CapabilityAssessment,
   CapabilitySelection,
   CapabilityVersion,
@@ -175,6 +180,24 @@ export class BioLab extends Context.Service<
     readonly getCapabilityDefaults: (
       missionId: string,
     ) => Effect.Effect<ReadonlyArray<CapabilitySelection>, BioLabError>
+    readonly searchDiscovery: (
+      missionId: string,
+      text: string,
+      afterId?: string,
+    ) => Effect.Effect<ReadonlyArray<DiscoveredCandidate>, BioLabError>
+    readonly getDiscoveryMeasurement: (
+      missionId: string,
+      measurementId: string,
+    ) => Effect.Effect<SemanticMeasurement, BioLabError>
+    readonly refreshDiscovery: (
+      input: GenesisDiscovery,
+    ) => Effect.Effect<void, BioLabError>
+    readonly getGenesis: (
+      missionId: string,
+    ) => Effect.Effect<GenesisSnapshot | null, BioLabError>
+    readonly recordGenesisDiscovery: (
+      input: GenesisDiscovery,
+    ) => Effect.Effect<GenesisSnapshot, BioLabError>
     readonly getLifecycle: (
       missionId: string,
     ) => Effect.Effect<Lifecycle, BioLabError>

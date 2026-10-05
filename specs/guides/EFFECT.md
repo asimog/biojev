@@ -149,3 +149,12 @@ Root tests and backend development load optional ignored root .env and then
 .env.local using
 Node's native env-file support. No dotenv dependency or global tool configuration
 is required. Editor type/lint diagnostics do not require those runtime tools.
+
+## Genesis composition
+
+Supply the discovery Effect and semantic-question projection to discoverGenesis.
+It uses existing BioLab and JevEngine capabilities; no Genesis Service or
+Effect-owned agent/environment is added. Core admission uses retained lifecycle
+facts and invokes the existing Pi Director once the map is ready. Semantic
+failure retains candidates and an explicit failure rather than a fabricated zero.
+The minimal persistence uses the already allowlisted lifecycle SQL surface.

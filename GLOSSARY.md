@@ -68,3 +68,18 @@ A reusable scientific or computational ability with institutional version histor
 
 **SemanticMeasurement**:
 A recorded measurement of a semantic question, distinct from biological or statistical confidence.
+
+## Genesis
+
+One-time initialization of a Mission’s searchable institutional map and inaugural
+Director direction. It is outside research-block countability.
+
+## Refresh
+
+Later attributable updates to source and capability discovery indexes, preserving
+completed initialization and research history.
+
+## DiscoveredCapability
+
+An external computational possibility known to exist, without implied
+installation, executability, qualification, or institutional selection.

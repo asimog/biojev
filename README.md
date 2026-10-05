@@ -65,3 +65,11 @@ configuration and verification status. The status-only backend needs no model ke
 Tracked Effect and TypeSafe reference subtrees live under repos/; production
 code never imports them. Pi is imported only from installed npm packages; its
 former source subtree has been removed.
+
+Genesis now gates the first investigation through a replaceable discovery
+program, broad BioLab candidates, Jev measurement, and the existing inaugural
+Director. Refresh preserves completed initialization. See
+[Genesis](specs/architecture/GENESIS.md) and the
+[v0 implementation plan](specs/IMPLEMENTATION_PLAN.md) for scope and qualification.
+External catalog ingestion and production mission command/UI composition remain
+pending; the backend still serves its real status path.

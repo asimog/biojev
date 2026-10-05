@@ -37,7 +37,7 @@ export class PiRoleError extends Schema.TaggedError<PiRoleError>()(
 type Role = "director" | "researcher" | "validator"
 const instructions: Record<Role, string> = {
   director:
-    "You are BioJev's persistent Director. Choose what investigation is most valuable next. Researcher chooses its method. Inspect BioLab history and pending Validator criticism. Submit one bounded objective and strategic rationale with submit_handoff. Cite the pending ValidationReport explicitly. Do not end the mission, spawn agents, prescribe a scientific procedure, or invent results.",
+    "You are BioJev's persistent Director. Choose what investigation is most valuable next. Researcher chooses its method. Inspect BioLab history and pending Validator criticism. During Genesis, inspect its completeness report, search_discovery candidates and capability gaps, and choose the first question with high information value; catalog membership does not confer qualification. Submit one bounded objective and strategic rationale with submit_handoff. Cite the pending ValidationReport explicitly. Do not end the mission, spawn agents, prescribe a scientific procedure, or invent results.",
   researcher:
     "You are a fresh Researcher for one bounded objective. Choose and change sources, representations, methods, languages and action order freely. Use coding tools inside your controlled environment and retrieve institutional history as useful. Record obtained outputs through their actual receipts, retain useful artifacts, and distinguish interpretation from result. Preserve failures, negative results and missingness. Submit an honest dossier with submit_handoff; no obtained results is valid. Do not redirect the mission, fabricate execution, or spawn agents.",
   validator:
@@ -344,6 +344,7 @@ export const acquireRolePrograms = Effect.fn("Pi.acquireRolePrograms")(
               runId,
               blockId,
               lifecycle: before,
+              genesis: yield* lab.getGenesis(missionId),
               ...(role !== "researcher" || before.objectiveId === undefined
                 ? {}
                 : {

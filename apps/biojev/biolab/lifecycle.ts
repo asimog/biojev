@@ -5,8 +5,15 @@ import {
   ResearchDossier,
   ValidationReport,
 } from "../agents/contracts.ts"
+import { genesisMapSufficient } from "../core/genesis.ts"
+import { SemanticMeasurement } from "../jevengine/JevEngine.ts"
 import { BioLabError } from "./BioLab.ts"
 import type { CanonicalRef } from "./model/Domain.ts"
+import {
+  DiscoveredCandidate,
+  GenesisDiscovery,
+  GenesisSnapshot,
+} from "./model/Genesis.ts"
 import {
   FinishBlock,
   type Lifecycle,
@@ -68,6 +75,148 @@ export const makeLifecycle = (
   const atomic = <A, R>(
     work: Effect.Effect<A, BioLabError | SqlError.SqlError, R>,
   ) => checked(sql.withTransaction(work))
+  const getGenesis = Effect.fn("BioLab.getGenesis")(function* (
+    missionId: string,
+  ) {
+    yield* deps.getMission(missionId)
+    const rows = yield* sql<{
+      body: string
+    }>`SELECT body FROM genesis WHERE missionId = ${missionId}`
+    return rows.length === 0
+      ? null
+      : yield* decode(Schema.fromJsonString(GenesisSnapshot), rows[0].body)
+  }, checked)
+  const searchDiscovery = Effect.fn("BioLab.searchDiscovery")(function* (
+    missionId: string,
+    text: string,
+    afterId = "",
+  ) {
+    yield* deps.getMission(missionId)
+    const rows = yield* sql<{
+      body: string
+    }>`SELECT body FROM discovered_candidates WHERE missionId = ${missionId} AND id > ${afterId} AND body LIKE ${`%${text}%`} ORDER BY id LIMIT 100`
+    return yield* Effect.forEach(rows, (row) =>
+      decode(Schema.fromJsonString(DiscoveredCandidate), row.body),
+    )
+  }, checked)
+  const getDiscoveryMeasurement = Effect.fn("BioLab.getDiscoveryMeasurement")(
+    function* (missionId: string, measurementId: string) {
+      yield* deps.getMission(missionId)
+      const rows = yield* sql<{
+        body: string
+      }>`SELECT body FROM genesis_measurements WHERE missionId = ${missionId} AND id = ${measurementId}`
+      if (rows.length === 0)
+        return yield* new BioLabError({
+          code: "NOT_FOUND",
+          operation: "getDiscoveryMeasurement",
+          message: "Discovery measurement was not found",
+        })
+      return yield* decode(
+        Schema.fromJsonString(SemanticMeasurement),
+        rows[0].body,
+      )
+    },
+    checked,
+  )
+  const recordGenesisDiscovery = Effect.fn("BioLab.recordGenesisDiscovery")(
+    function* (input: GenesisDiscovery, refresh = false) {
+      const value = yield* decode(GenesisDiscovery, input)
+      return yield* atomic(
+        Effect.gen(function* () {
+          const mission = yield* deps.getMission(value.missionId)
+          const previous = yield* getGenesis(value.missionId)
+          if (
+            mission.status !== "RUNNING" ||
+            mission.revision !== value.missionRevision ||
+            (!refresh && previous?.status === "COMPLETED") ||
+            (refresh && previous?.status !== "COMPLETED")
+          )
+            return yield* reject(
+              "Genesis cannot replace completed initialization or use stale mission context",
+            )
+          const { candidates, measurements, ...details } = value
+          const ids = new Set(candidates.map((candidate) => candidate.id))
+          if (ids.size !== candidates.length)
+            return yield* reject(
+              "Discovery candidate identities must be unique",
+            )
+          for (const measurement of measurements) {
+            if (
+              measurement.originRunId !== `${value.missionId}:genesis` ||
+              measurement.subjectRefs.length === 0 ||
+              measurement.subjectRefs.some((ref) => {
+                const candidate = candidates.find(
+                  (candidate) => candidate.id === ref.id,
+                )
+                return (
+                  candidate === undefined ||
+                  ref.kind !==
+                    (candidate.kind === "source"
+                      ? "DiscoveredSource"
+                      : "DiscoveredCapability")
+                )
+              })
+            )
+              return yield* reject(
+                "Genesis measurement attribution does not match candidates",
+              )
+          }
+          for (const candidate of candidates) {
+            const rows = yield* sql<{
+              body: string
+            }>`SELECT body FROM discovered_candidates WHERE missionId = ${value.missionId} AND id = ${candidate.id}`
+            if (rows.length > 0 && rows[0].body !== JSON.stringify(candidate))
+              return yield* reject("Discovery identity is immutable")
+            yield* sql`INSERT OR IGNORE INTO discovered_candidates (missionId, id, body) VALUES (${value.missionId}, ${candidate.id}, ${JSON.stringify(candidate)})`
+          }
+          for (const measurement of measurements) {
+            const rows = yield* sql<{
+              body: string
+            }>`SELECT body FROM genesis_measurements WHERE missionId = ${value.missionId} AND id = ${measurement.measurementId}`
+            if (rows.length > 0 && rows[0].body !== JSON.stringify(measurement))
+              return yield* reject("Semantic measurement identity is immutable")
+            yield* sql`INSERT OR IGNORE INTO genesis_measurements (missionId, id, body) VALUES (${value.missionId}, ${measurement.measurementId}, ${JSON.stringify(measurement)})`
+          }
+          const retained = {
+            ...details,
+            sourceIds: candidates
+              .filter((candidate) => candidate.kind === "source")
+              .map((candidate) => candidate.id),
+            capabilityIds: candidates
+              .filter((candidate) => candidate.kind === "capability")
+              .map((candidate) => candidate.id),
+            semanticMeasurementIds: measurements.map(
+              (measurement) => measurement.measurementId,
+            ),
+          }
+          const snapshot: GenesisSnapshot = {
+            ...retained,
+            normalizerVersions: [
+              ...new Set(
+                candidates.map((candidate) => candidate.normalizerVersion),
+              ),
+            ],
+            sourceRecordsImported: retained.sourceIds.length,
+            capabilityCandidatesImported: retained.capabilityIds.length,
+            genesisId: `${value.missionId}:genesis`,
+            startedAt:
+              previous?.startedAt ??
+              DateTime.toEpochMillis(yield* DateTime.now),
+            completedAt: null,
+            status: genesisMapSufficient(retained)
+              ? "READY_FOR_DIRECTION"
+              : "FAILED",
+            inauguralDirectorDecisionId: null,
+            initialResearchObjectiveId: null,
+          }
+          yield* sql`INSERT INTO genesis_attempts (missionId, body) VALUES (${value.missionId}, ${JSON.stringify({ purpose: refresh ? "REFRESH" : "GENESIS", snapshot })})`
+          if (refresh && previous !== null) return previous
+          yield* sql`INSERT INTO genesis (missionId, body) VALUES (${value.missionId}, ${JSON.stringify(snapshot)}) ON CONFLICT(missionId) DO UPDATE SET body = excluded.body`
+          return snapshot
+        }),
+      )
+    },
+  )
   const getRuns = Effect.fn("BioLab.getRuns")(function* (missionId: string) {
     const rows = yield* sql<{
       body: string
@@ -101,6 +250,7 @@ export const makeLifecycle = (
     excludeRun: string | undefined,
   ): Effect.fn.Return<Lifecycle, BioLabError | SqlError.SqlError> {
     const mission = yield* deps.getMission(missionId)
+    const genesis = yield* getGenesis(missionId)
     const blocks = yield* getResearchBlocks(missionId)
     const history = yield* cycles(missionId)
     const reviewed = new Set(
@@ -125,6 +275,7 @@ export const makeLifecycle = (
     const pending = validation?.status === "AWAITING_DIRECTOR"
     return {
       mission,
+      genesisComplete: genesis?.status === "COMPLETED",
       recoveryRequired:
         active.length > 0 ||
         blocks.some((block) => block.status === "RECOVERY_REQUIRED"),
@@ -218,6 +369,15 @@ export const makeLifecycle = (
             return yield* reject(
               "Director run belongs to a stale or unknown mission revision",
             )
+          const genesis = yield* getGenesis(run.missionId)
+          if (
+            !current.genesisComplete &&
+            (genesis?.status !== "READY_FOR_DIRECTION" ||
+              genesis.missionRevision !== current.mission.revision)
+          )
+            return yield* reject(
+              "Inaugural Director requires a sufficient Genesis map",
+            )
           if (current.validationDue || current.objectiveReady)
             return yield* reject(
               "Director cannot bypass validation or replace a ready objective",
@@ -242,6 +402,16 @@ export const makeLifecycle = (
             value: value.nextObjective,
           })
           yield* sql`INSERT INTO objectives (objectiveId, missionId, decisionId, status) VALUES (${value.nextObjective.objectiveId}, ${run.missionId}, ${value.decisionId}, 'READY')`
+          if (!current.genesisComplete && genesis !== null) {
+            const completed: GenesisSnapshot = {
+              ...genesis,
+              status: "COMPLETED",
+              completedAt: DateTime.toEpochMillis(yield* DateTime.now),
+              inauguralDirectorDecisionId: value.decisionId,
+              initialResearchObjectiveId: value.nextObjective.objectiveId,
+            }
+            yield* sql`UPDATE genesis SET body = ${JSON.stringify(completed)} WHERE missionId = ${run.missionId}`
+          }
           if (current.validation?.status === "AWAITING_DIRECTOR") {
             const reviewed: ValidationCycle = {
               ...current.validation,
@@ -276,7 +446,11 @@ export const makeLifecycle = (
           yield* sql`SELECT blockId FROM research_blocks WHERE blockId = ${run.blockId} AND runId = ${run.runId}`
         if (repeated.length > 0) return yield* getBlock(run.blockId)
         const current = yield* requireRunning(run)
-        if (!current.objectiveReady || current.objectiveId !== objectiveId)
+        if (
+          !current.genesisComplete ||
+          !current.objectiveReady ||
+          current.objectiveId !== objectiveId
+        )
           return yield* reject("ResearchObjective is not legally ready")
         const startedAt = DateTime.toEpochMillis(yield* DateTime.now)
         yield* decode(
@@ -507,6 +681,12 @@ export const makeLifecycle = (
     },
   )
   return {
+    refreshDiscovery: (input: GenesisDiscovery) =>
+      recordGenesisDiscovery(input, true).pipe(Effect.asVoid),
+    getDiscoveryMeasurement,
+    searchDiscovery,
+    getGenesis,
+    recordGenesisDiscovery,
     getLifecycle,
     getRuns,
     setMissionStatus,

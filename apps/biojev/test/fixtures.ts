@@ -73,3 +73,54 @@ export const report = (
   recommendations: ["Broaden the next objective"],
   importantRefs: [],
 })
+
+export const discoveredMap = (missionId: string, missionRevision = 1) => ({
+  missionId,
+  missionRevision,
+  programId: "deterministic-discovery",
+  programVersion: "1",
+  configuredInputIds: ["fixture-catalog"],
+  outcomes: [
+    { inputId: "fixture-catalog", snapshotRef: "snapshot-1", failure: null },
+  ],
+  candidates: [
+    {
+      id: "candidate-1",
+      kind: "source" as const,
+      externalId: "external-1",
+      description: "Public computational possibilities",
+      metadata: {},
+      snapshotRef: "snapshot-1",
+      recordHash: "fixture-hash",
+      normalizerVersion: "1",
+      retrievedAt: 1,
+    },
+  ],
+  measurements: [
+    {
+      measurementId: "measurement-1",
+      originRunId: `${missionId}:genesis`,
+      questionId: "discovery-relevance",
+      questionVersion: "1",
+      primitive: "noul" as const,
+      subjectRefs: [{ kind: "DiscoveredSource", id: "candidate-1" }],
+      projection: {
+        identity: "discovery-map",
+        version: "1",
+        value: "Public computational possibilities",
+      },
+      question: {
+        type: "noul" as const,
+        instructions: "Is this possibility relevant to the mission?",
+      },
+      inputHash: "fixture-input-hash",
+      provider: "typesafe" as const,
+      requestedModel: "fixture",
+      model: "fixture",
+      answer: { type: "noul" as const, noul: 0.01 },
+      usage: { input_tokens: 1, output_tokens: 1 },
+      receipt: { requestId: "fixture-request" },
+      createdAt: 1,
+    },
+  ],
+})

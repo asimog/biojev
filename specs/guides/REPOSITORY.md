@@ -6,7 +6,7 @@ and depth; this guide assigns ownership rather than snapshotting every file.
 
 | Location | Local responsibility |
 | --- | --- |
-| apps/biojev/core/ | Pure legal sequencing and application mission/command programs |
+| apps/biojev/core/ | Pure legal sequencing, replaceable Genesis program, and mission/command programs |
 | apps/biojev/agents/ | Domain handoff contracts for the roles Pi runs |
 | apps/biojev/biolab/ | Institutional recording/query interface and canonical shapes |
 | apps/biojev/jevengine/ | Semantic question/measurement validation and imported TypeSafe SDK transport |
@@ -52,3 +52,8 @@ never imports repos/**. Upstream reference
 documentation remains upstream-owned; local specifications govern BioJev.
 Add shared packages only for actual multiple consumers, and introduce an Adapter
 only for real variability at a seam.
+
+Genesis is coordinated in core/genesis.ts with BioLab-owned validated discovery
+records and storage. Concrete discovery is supplied by composition. Source
+identifiers, catalog metadata, and external abilities stay outside Core policy;
+no permanent source/search/capability subsystem or vendored runtime is introduced.

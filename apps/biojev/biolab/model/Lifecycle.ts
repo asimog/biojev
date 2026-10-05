@@ -39,6 +39,7 @@ export type ValidationCycle = typeof ValidationCycle.Type
 
 export interface Lifecycle {
   readonly mission: Mission
+  readonly genesisComplete: boolean
   readonly recoveryRequired: boolean
   readonly validationDue: boolean
   readonly validationCompletedAwaitingDirectorReview: boolean

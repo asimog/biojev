@@ -6,7 +6,8 @@ and the human UI. It defines authority independently of implementation access.
 The institution constrains authority, persistence, provenance, lifecycle,
 isolation, validation, resource lifetime, and recovery strongly. Agents retain
 freedom over scientific questions, search, representations, methods, languages,
-hypotheses, tools, and whether Jev is useful.
+hypotheses, tools, and whether Jev is useful within an investigation.
+Genesis separately requires semantic discovery under its initialization contract.
 
 1. Director selects the next investigation; Researcher selects its method.
 2. Validator independently critiques; Director decides the response.
@@ -29,8 +30,11 @@ hypotheses, tools, and whether Jev is useful.
 19. UI state and live activity are projections. Browser refresh does not affect research execution.
 20. A mission continues until the human stops it; pause retains active research as an orphan without completing the mission.
 
+21. Genesis initializes a broad searchable map; the existing Director alone chooses its inaugural direction.
+22. Genesis is replaceable, source-agnostic, once per Mission, and outside ResearchBlock countability.
+
 Validator is required for v0. No second agent/workflow runtime, centralized
-Search engine, scientific execution subsystem, mandatory modality/literature/Jev
+Search engine, scientific execution subsystem, mandatory scientific modality/literature/Jev
 stage, fixed hypothesis count, or universal interestingness formula is introduced.
 
 [Workflows](../workflows/README.md) defines sequencing and operational failure
@@ -44,7 +48,7 @@ search, memory, general tools, empirical feedback, and learning from outcomes.
 Strong institutional boundaries constrain authority, persistence, provenance,
 lifecycle, isolation, validation, and recovery. Scientific strategy, source
 choice, search order, representation, method, language, tools, hypotheses, and
-Jev usage remain agent choices.
+Jev usage within ResearchBlocks remain agent choices.
 
 Core vocabulary is domain-agnostic. Mutation, CNV, expression, GDC, TCGA,
 survival, single-cell, proteomics, and alignment may be useful investigations;
@@ -114,3 +118,7 @@ access does not make Director the scientist for the entire ResearchBlock.
 
 See [BioLab](BIOLAB.md) for recording semantics and
 [workflows](../workflows/README.md) for role handoffs.
+
+[Genesis](GENESIS.md) defines the initialization contract and required semantic
+discovery. That obligation applies to institutional initialization, not to every
+ResearchBlock. Later Refresh never repeats inaugural initialization.

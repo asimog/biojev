@@ -10,6 +10,7 @@ Institutional sequencing is deterministic. Scientific procedure stays open.
 | --- | --- |
 | [Architecture](architecture/README.md) | Modules, interfaces, seams, and design depth |
 | [Constitution](architecture/CONSTITUTION.md) | System invariants |
+| [Genesis](architecture/GENESIS.md) | Replaceable initial discovery, inaugural direction, and Refresh distinction |
 | [Roles](architecture/AGENT_ROLES.md) | Role inputs, outputs, and lifetimes |
 | [BioLab](architecture/BIOLAB.md) | Institutional records and recording interface |
 | [Jev](architecture/JEVENGINE.md) | Semantic measurement interface |

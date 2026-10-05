@@ -18,9 +18,16 @@ import { CanonicalRef } from "../../biolab/model/Domain.ts"
 import { Operation } from "../../biolab/model/Recording.ts"
 import { BioLabLive } from "../../biolab/SqliteLive.ts"
 import { LinuxNetworkConfig } from "../../config/config.ts"
+import { discoverGenesis } from "../../core/genesis.ts"
 import { advanceMission } from "../../core/mission.ts"
 import { acquireMissionLoop } from "../../core/mission-loop.ts"
-import { decision, dossier, report } from "../../test/fixtures.ts"
+import { JevEngine } from "../../jevengine/JevEngine.ts"
+import {
+  decision,
+  discoveredMap,
+  dossier,
+  report,
+} from "../../test/fixtures.ts"
 import { acquireHarness } from "./harness.ts"
 import { acquireRolePrograms } from "./roles.ts"
 
@@ -247,38 +254,88 @@ it.live(
             missionId: "mission",
             statement: "Investigate an open computational question",
           })
+          const map = discoveredMap("mission")
+          const programs = {
+            ...roles,
+            genesis: (missionId: string) =>
+              discoverGenesis(
+                missionId,
+                () =>
+                  Effect.succeed({
+                    programId: map.programId,
+                    programVersion: map.programVersion,
+                    configuredInputIds: map.configuredInputIds,
+                    outcomes: map.outcomes,
+                    candidates: map.candidates,
+                  }),
+                () => ({
+                  questionId: map.measurements[0].questionId,
+                  questionVersion: "1",
+                  originRunId: `${missionId}:genesis`,
+                  subjectRefs: map.measurements[0].subjectRefs,
+                  projection: map.measurements[0].projection,
+                  question: map.measurements[0].question,
+                }),
+              ).pipe(
+                Effect.provideService(JevEngine, {
+                  measure: () => Effect.succeed(map.measurements[0]),
+                }),
+              ),
+          }
+          assert.equal(
+            yield* advanceMission("mission", programs),
+            "RUN_GENESIS",
+          )
+          assert.equal(
+            (yield* lab.getGenesis("mission"))?.status,
+            "READY_FOR_DIRECTION",
+          )
+          assert.equal((yield* lab.getLifecycle("mission")).countableBlocks, 0)
+
           for (let block = 0; block < 10; block++) {
             assert.equal(
-              yield* advanceMission("mission", roles),
-              "RUN_DIRECTOR",
+              yield* advanceMission("mission", programs),
+              block === 0 ? "RUN_GENESIS" : "RUN_DIRECTOR",
             )
             assert.equal(
-              yield* advanceMission("mission", roles),
+              yield* advanceMission("mission", programs),
               "RUN_RESEARCHER",
             )
           }
           const due = yield* lab.getLifecycle("mission")
           assert.isTrue(due.validationDue)
           assert.equal(due.countableBlocks, 10)
-          assert.equal(yield* advanceMission("mission", roles), "RUN_VALIDATOR")
+          assert.equal(
+            yield* advanceMission("mission", programs),
+            "RUN_VALIDATOR",
+          )
           assert.isTrue((yield* lab.getLifecycle("mission")).validationDue)
           assert.equal((yield* lab.getLifecycle("mission")).countableBlocks, 10)
-          assert.equal(yield* advanceMission("mission", roles), "RUN_VALIDATOR")
+          assert.equal(
+            yield* advanceMission("mission", programs),
+            "RUN_VALIDATOR",
+          )
           const pending = yield* lab.getLifecycle("mission")
           assert.isTrue(pending.validationCompletedAwaitingDirectorReview)
           assert.isFalse(pending.objectiveReady)
-          assert.equal(yield* advanceMission("mission", roles), "RUN_DIRECTOR")
+          assert.equal(
+            yield* advanceMission("mission", programs),
+            "RUN_DIRECTOR",
+          )
           assert.isTrue(
             (yield* lab.getLifecycle("mission"))
               .validationCompletedAwaitingDirectorReview,
           )
           assert.isFalse((yield* lab.getLifecycle("mission")).objectiveReady)
-          assert.equal(yield* advanceMission("mission", roles), "RUN_DIRECTOR")
+          assert.equal(
+            yield* advanceMission("mission", programs),
+            "RUN_DIRECTOR",
+          )
           const reviewed = yield* lab.getLifecycle("mission")
           assert.equal(reviewed.countableBlocks, 0)
           assert.isFalse(reviewed.validationCompletedAwaitingDirectorReview)
           assert.equal(
-            yield* advanceMission("mission", roles),
+            yield* advanceMission("mission", programs),
             "RUN_RESEARCHER",
           )
           const blocks = yield* lab.getResearchBlocks("mission")
@@ -334,7 +391,7 @@ it.live(
             ),
           )
           yield* lab.setMissionStatus("mission", "STOPPED")
-          assert.equal(yield* advanceMission("mission", roles), "STOP")
+          assert.equal(yield* advanceMission("mission", programs), "STOP")
         }).pipe(
           Effect.provide(BioLabLive(path.join(directory, "biojev.sqlite"))),
         ),
@@ -421,6 +478,7 @@ it.live(
             missionId: "mission",
             statement: "Investigate an open question",
           })
+          yield* lab.recordGenesisDiscovery(discoveredMap("mission"))
           yield* advanceMission("mission", roles)
           yield* advanceMission("mission", roles)
           let blocks = yield* lab.getResearchBlocks("mission")
@@ -511,6 +569,7 @@ it.live.each([false, true])(
             missionId: "mission",
             statement: "Investigate a generic computational question",
           })
+          yield* lab.recordGenesisDiscovery(discoveredMap("mission"))
           const director = yield* lab.beginRun({
             runId: "director",
             missionId: "mission",
@@ -699,7 +758,11 @@ it.live(
               ...network,
             },
           })
-          const commands = yield* acquireMissionLoop(roles)
+          const commands = yield* acquireMissionLoop({
+            ...roles,
+            genesis: (missionId: string) =>
+              lab.recordGenesisDiscovery(discoveredMap(missionId)),
+          })
           let ready = gate()
           yield* commands.start({
             missionId: "mission",

@@ -55,6 +55,13 @@ export const BioLabLive = (filename: string) =>
             yield* db`CREATE TABLE records (kind TEXT NOT NULL, id TEXT NOT NULL, missionId TEXT NOT NULL REFERENCES missions(missionId), runId TEXT NOT NULL REFERENCES agent_runs(runId), body TEXT NOT NULL, PRIMARY KEY(kind, id))`
             yield* db`CREATE INDEX records_mission ON records(missionId)`
           }),
+          "0004_genesis": Effect.gen(function* () {
+            const db = yield* SqlClient.SqlClient
+            yield* db`CREATE TABLE genesis (missionId TEXT PRIMARY KEY REFERENCES missions(missionId), body TEXT NOT NULL)`
+            yield* db`CREATE TABLE discovered_candidates (missionId TEXT NOT NULL REFERENCES missions(missionId), id TEXT NOT NULL, body TEXT NOT NULL, PRIMARY KEY(missionId, id))`
+            yield* db`CREATE TABLE genesis_measurements (missionId TEXT NOT NULL REFERENCES missions(missionId), id TEXT NOT NULL, body TEXT NOT NULL, PRIMARY KEY(missionId, id))`
+            yield* db`CREATE TABLE genesis_attempts (missionId TEXT NOT NULL REFERENCES missions(missionId), body TEXT NOT NULL)`
+          }),
           "0003_lifecycle": Effect.gen(function* () {
             const db = yield* SqlClient.SqlClient
             yield* db`CREATE TABLE objectives (objectiveId TEXT PRIMARY KEY, missionId TEXT NOT NULL REFERENCES missions(missionId), decisionId TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('READY','RUNNING','CONSUMED')))`

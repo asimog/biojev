@@ -67,7 +67,8 @@ their own authorized extension, submit upstream input and terminate via the
 upstream handoff tool control. Timeout and interruption bridge to explicit
 abort, idle and environment cleanup before canonical settlement. Mission-loop
 tests cover commands and the ten-block gate, including failed review attempts.
-Live projections and production wiring remain pending. No upstream cognition
+A committed live projection is implemented; its HTTP/UI integration and
+production wiring remain pending. No upstream cognition
 or task machinery is copied.
 
 ## Production model routing
@@ -119,7 +120,7 @@ replacement task scheduler. Process-crash qualification remains required.
 | Package | Include? | Reason |
 | --- | --- | --- |
 | @earendil-works/pi-durable | Required | Harness, generation/tool/compaction tasks, storage, and bundled CodingTools |
-| @earendil-works/pi-ai | Direct dependency for current integration | BioJev imports createModels and will configure providers; Durable also depends on it |
+| @earendil-works/pi-ai | Direct dependency for current integration | BioJev imports createModels and configures providers; Durable also depends on it |
 | @earendil-works/chord | Direct dependency for current integration | BioJev imports cancellation contexts; Durable also depends on it |
 
 Installing only pi-durable pulls Pi AI and Chord transitively. That is sufficient
@@ -199,3 +200,8 @@ or upgrade. Manifests and the lockfile define installed versions.
 
 [Workflows](../workflows/README.md) owns timeout and recovery sequencing.
 The [repository guide](../guides/REPOSITORY.md) owns Pi import locations.
+
+Genesis invokes this existing persistent Director after BioLab retains a
+sufficient map. It creates no Pi role, conversation implementation, environment
+owner, or extra package. The initialization completeness report enters the
+Director context, and search_discovery exposes retained possibilities.

@@ -37,7 +37,8 @@ Lifecycle handoffs and orphan classification are implemented. Decision/objective
 and validation/report/review transitions are transactional. A retained dossier
 does not count its block before runtime and environment cleanup succeeds.
 Canonical operation history is queryable after reopening; tools do not depend
-on an in-memory receipt list. Semantic and capability persistence remain pending.
+on an in-memory receipt list. Authorized semantic and capability persistence/tools are implemented; full
+production wiring and capability-reuse qualification remain pending.
 
 ## Record families
 
@@ -46,6 +47,7 @@ Add records only when an implemented vertical path needs them.
 | Family | Records |
 | --- | --- |
 | Mission | Mission, MissionRevision |
+| Initialization | GenesisSnapshot, discovered sources/capability candidates, attributed discovery attempts |
 | Runtime attribution | AgentRun |
 | Strategy | DirectorDecision, ResearchObjective |
 | Investigation | ResearchBlock, ResearchDossier; OrphanBlock classification |
@@ -100,3 +102,22 @@ history. It is excluded from the research window but remains retrievable with
 its obtained outputs and failures. Its persistence representation can be a block
 classification; no separate table is required merely because the term exists.
 ValidationBlock belongs to its ValidationCycle and is not a ResearchBlock.
+
+## Genesis integration
+
+BioLab owns Genesis-created source and external-capability indexes and snapshots.
+DiscoveredCapability is an external candidate, distinct from executable
+CapabilityVersion, observed CapabilityAssessment, and Director-selected defaults.
+Discovery records retain source provenance and incomplete imports explicitly;
+they are not ScientificResults. Add domain-intent operations with their consumer.
+
+[Genesis](GENESIS.md) owns initialization lifecycle, provenance, partial-failure
+policy, and the distinction from later Refresh.
+
+The implemented minimal discovery seam uses recordGenesisDiscovery,
+searchDiscovery, getGenesis, and refreshDiscovery. Trusted application discovery
+persists validated candidates and measurements transactionally; these are not
+agent write tools. Snapshot references avoid duplicating candidate/measurement
+payloads. Genesis measurements attribute the initialization operation, not a
+fourth AgentRun. Normal semantic tools retain their existing actual role run
+attribution. Refresh retains a new attempt while preserving completed Genesis.

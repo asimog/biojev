@@ -15,14 +15,16 @@ identifies what must pass before the next slice can run.
 ## Solution
 
 Build a source agnostic bioinformatics and computation pipeline through small,
-working application paths. The institutional path connects a mission, Director
+working application paths. The institutional path connects a mission, replaceable Genesis initialization, Director
 objective, fresh Researcher, attributable results and dossier, and subsequent
 Director decision. After ten countable ResearchBlocks, a fresh Validator runs
 its own block and Director reviews its report before research continues.
 
 Agents choose sources, formats, representations, methods, programs, and action
 order. No settled scientific domain, complete ontology, universal payload
-schema, source catalog, or bespoke adapter per source is required. Add schemas
+schema, predetermined source catalog, or bespoke adapter per source is required.
+A sufficient initial searchable map is required, but its discovery program and
+source choices are replaceable under the Genesis contract. Add schemas
 and records when an implemented path needs them. Core enforces legal lifecycle;
 BioLab owns retained history; imported Pi owns cognition and ExecutionEnv.
 
@@ -82,10 +84,10 @@ specifications.
 | --- | --- | --- |
 | Observation | Real backend IDLE response and server-rendered UI | Lifecycle commands, dynamic state, history queries, live events |
 | Core | Legal-action policy and application command/mission-loop programs, exercised through imported Pi | Production composition and process-crash/shutdown qualification |
-| BioLab | Migrated mission/revision, science and lifecycle storage; immutable authorized records, orphan classification, transactional validation/review gates, receipts/artifacts and memory reads | Capability learning and semantic measurement retention |
+| BioLab | Migrated mission/revision, science, Genesis and lifecycle storage; immutable authorized records, discovery/Refresh, semantic/capability recording, validation/review gates, receipts/artifacts and memory reads | Full capability reuse and production qualification |
 | Pi | Imported scoped Harness and role programs; persistent Director, fresh Researcher/Validator, explicit abort/idle/cleanup and conservative restart reconciliation; qualified OpenRouter routing | Live authenticated provider verification, committed activity projection and production wiring |
 | Computation | Imported Pi files/shell inside Linux isolation; real role binding; trusted receipts and content-hash artifacts; explicit descendant/workspace cleanup | Production host configuration and process-crash qualification |
-| Jev | Imported TypeSafe SDK over Effect HTTP; versioned questions/projections, native response validation and cancellation qualified locally | Authorized BioLab retention, role tools and live authenticated verification |
+| Jev | Imported TypeSafe SDK over Effect HTTP; versioned questions/projections, native response validation/cancellation, authorized retention, role tools and Genesis discovery | Production mission composition and qualification |
 | Startup | Exclusive advisory ownership of both stores before backend storage/Harness acquisition | Continuous mission scheduling and reconciliation |
 | Feedback | Strict typecheck, Effect diagnostics, boundaries, lint, behavioral tests, and workspace builds | Additional checks with each slice |
 
@@ -97,10 +99,11 @@ specifications.
 | 2 | Mission storage and ownership implemented | SQLite reopen/revision/concurrency tests; competing owner and database alias rejection; real backend IDLE and successful store/lock reopening after SIGKILL |
 | 3 | Controlled computation qualified | Actual Python/JSON and public HTTPS retrieval; bundled Pi write/bash; host database/symlink and HTTP denial; abort/namespace teardown; artifact retention/restoration/integrity |
 | 4 | Recording path qualified | Forged capability/role/run and unrelated receipt rejection; immutable/revision checks; real Pi tools → retained result/interpretation → reopen → fresh Validator artifact reuse |
+| G | Genesis lifecycle implemented | Generic discovery/Jev program, broad retained candidates, explicit partial failures, transactional inaugural handoff, Refresh preservation and reopen; actual external catalog ingestion deferred |
 | 5 | Role/block path qualified | Actual Python and shell outputs, honest no-results dossiers, persistent Director/fresh Researcher, explicit Pi timeout abort, cancellation/orphans, and fresh work after pause |
 | 6 | Validation/review gate qualified | Exact ten-block window through actual Pi roles; failed Validator and Director attempts preserve gates; fresh Validator retry; explicit reviewed report before block eleven; canonical gate survives SQLite reopen |
-| 7 | Application programs implemented; production qualification pending | Continuous command-driven fixture covers start/pause/resume/revise/stop and cleanup acknowledgements; reopen preserves orphan identity without unsafe replay, including absent Pi state. HTTP composition, real provider and process-crash/shutdown checks remain |
-| 8 | Semantic transport qualified; institutional integration pending | TypeSafe SDK/local HTTP tests cover Noul/Choice/Score, native answer validation, request identity and cancellation; canonical measurement retention, role tools and capability learning remain |
+| 7 | Application programs implemented; production qualification pending | Continuous command-driven fixture covers commands and cleanup; reopen preserves orphan identity without unsafe replay, including absent Pi state. HTTP composition and process-crash/shutdown checks remain; provider smoke is separate |
+| 8 | Transport qualified; institutional recording/tools implemented | TypeSafe SDK/local HTTP tests cover primitives, native validation, identity and cancellation; full capability reuse and production wiring still require qualification |
 | 9–10 | Pending | Complete observation/UI and all full-v0 acceptance checks |
 
 The goal remains the complete v0 path. Foundational tests establish only the
@@ -119,7 +122,8 @@ model or a mandate to create every listed table.
 - Import Pi Durable, Pi AI, and Chord through the existing Pi integration. Use upstream conversations, tasks, bundled tools, abort, and resume. No copied Pi, additional script VM, AgentRuntime Service, or Effect cognition implementation is needed. The [Pi dependency decision](architecture/PI_COMPATIBILITY.md#dependency-decision-from-installed-source) owns package rationale.
 - Pi alone owns environment selection, isolation, processes, and cleanup. Required host adaptation stays within that integration and uses the imported ExecutionEnv contract. A working directory alone is not isolation; qualify the concrete mechanism before enabling production computation.
 - Effect manages application configuration, scoped resources, typed failures, deadlines, HTTP/SSE, and legal-action lifetime. Request cleanup through Pi; do not create a parallel execution interface. Follow the [Effect guide](guides/EFFECT.md), including narrow unstable API allowances.
-- The user-selected cognition provider and ordered fallback are defined in [Pi model routing](architecture/PI_COMPATIBILITY.md#production-model-routing). The independent semantic provider is defined in [Jev's TypeSafe integration](architecture/JEVENGINE.md#typesafe-provider). These are settled configuration choices; live authenticated verification is still required.
+- The user-selected cognition provider and ordered fallback are defined in [Pi model routing](architecture/PI_COMPATIBILITY.md#production-model-routing). The independent semantic provider is defined in [Jev's TypeSafe integration](architecture/JEVENGINE.md#typesafe-provider). These are settled configuration choices; provider smoke verification does not
+  replace full mission qualification.
 - Establish exclusive scheduler/store ownership before opening Pi storage. Keep canonical and runtime databases distinct; configuration must reject the same resolved store. Release ownership after resource cleanup.
 - Keep source content and scientific representations open. Stable institutional references, provenance, and actual boundary validation are required; a complete biological ontology or universal source schema is not.
 - Use generic human command, history-read, and activity-stream interfaces. Preserve the existing status path while extending it with real lifecycle projections. Define new route payloads with each implemented command; the specs do not yet settle their URLs or field names.
@@ -140,7 +144,8 @@ recovery obligations pass.
 | 2 | Canonical mission storage and startup ownership | BioLab and application infrastructure | Existing contracts and configuration |
 | 3 | Controlled computation, receipts, retained artifacts | Pi integration | 1 |
 | 4 | Authorized recording and retrieval tools | BioLab and Pi tool integration | 2, 3 |
-| 5 | Director → one bounded ResearchBlock → dossier | Role programs, Core lifecycle, BioLab | 1–4 |
+| G | Replaceable Genesis map → inaugural direction | Core program, BioLab, Jev, existing Pi Director | 2; qualified Jev transport |
+| 5 | Genesis → Director → one bounded ResearchBlock → dossier | Role programs, Core lifecycle, BioLab | 1–4, G |
 | 6 | Exact ten-block validation and Director review | BioLab, Core, Pi roles | 5 |
 | 7 | Human commands, recovery, continuous mission lifecycle | Application lifecycle and command interface | 5, 6 |
 | 8 | Semantic measurement and capability learning | JevEngine, BioLab, Pi tools | 4; integrate with roles from 5–6 |
@@ -220,7 +225,20 @@ Acceptance:
 - Retrying authorized recording does not duplicate institutional history.
 - Retrieval includes orphan history and retained artifacts without exposing storage internals.
 
-### 5. Complete the first investigation path
+### 5. Complete Genesis and the first investigation path
+
+Implement [Genesis](architecture/GENESIS.md) as a replaceable initialization
+program supplied by composition. Retain broad discovered candidates and explicit
+source outcomes in BioLab; use Jev without score-based deletion or activation.
+The existing inaugural Pi Director searches the map and commits the first
+decision/objective before canonical completion admits ResearchBlock #1.
+Genesis and later Refresh do not advance validation cadence.
+
+Qualify alternative source-agnostic discovery programs, partial failure,
+insufficient-map rejection, retry/reopen, stale mission revision, and completion
+requiring both inaugural references. Real GDC/bio.tools ingestion is deferred;
+source choices live in deployment configuration rather than Core.
+
 
 Implement role configuration, instructions, and authorized tools. Director
 retains a mission conversation, retrieves relevant history, and commits a
@@ -310,7 +328,7 @@ Acceptance:
 
 ### 10. Qualify the complete v0
 
-Exercise one complete ten-countable-block window, Validator block, Director
+Exercise Genesis followed by one complete ten-countable-block window, Validator block, Director
 review, and subsequent research through the mission application interface.
 Use deterministic models, real institutional/runtime stores, and actual
 controlled computation. Include source/representation/program variation without
@@ -344,7 +362,7 @@ facade or require HTTP transport to test every institutional invariant.
 ## Out of Scope
 
 - Settling a biological domain, universal ontology, complete future schema, or predefined source collection before implementation.
-- Fixed scientific choreography, modality order, mandatory literature/Jev stages, fixed hypothesis counts, or universal interestingness scores.
+- Fixed scientific choreography, modality order, mandatory ResearchBlock literature/Jev stages, fixed hypothesis counts, or universal interestingness scores.
 - Additional autonomous roles/subagents, copied Pi internals, a second cognition/workflow runtime, a separate execution subsystem, or per-language scientific engines.
 - Raw canonical SQL tools, transcript-as-scientific-history, mutable old results, or UI/SSE as canonical state.
 - Additional developer approval gates or predefined scientific benchmarks.
@@ -369,8 +387,51 @@ is documented by ExecutionEnv; production bindings, new route payloads, and
 minimal persistence representation are concrete decisions for their respective
 slices, not a settled scientific-domain prerequisite.
 
-The next implementation task is slice 7 production composition: validated HTTP
+The next implementation task after Genesis qualification is slice 7 production composition: validated HTTP
 mission commands, the configured imported model provider, owned workspace settings,
 and process-crash/shutdown qualification.
 Continue through all remaining slices
 to the complete v0 rather than treating foundational qualification as completion.
+
+## Genesis qualification and remaining v0 release checks
+
+The Genesis specification is integrated into v0. Its implemented minimal
+checkpoints are READY_FOR_DIRECTION, FAILED, and COMPLETED; NOT_STARTED is an
+absent snapshot. DISCOVERING and DIRECTOR_RUNNING describe active orchestration
+phases. Durable active-phase/activity exposure belongs to production composition;
+do not claim it exists merely because the schema lists those phases.
+
+| Genesis invariant | Qualification evidence |
+| --- | --- |
+| Required before block one | Core precedence and direct BioLab block-admission rejection |
+| Completion requires initial decision and objective | Director transaction retains both and completes the snapshot; insufficient map rejects handoff |
+| No research count | Count remains zero through discovery and inauguration |
+| Jev measures without selecting/discarding | Low-relevance candidate remains searchable; semantic outage retains discovered candidates and explicit failure |
+| Partial discovery is explicit | Missing input outcomes fail sufficiency; catalog outage survives in Director's completeness report |
+| Replaceable initialization | Discovery Effect and question projection are supplied; a different program identity can initialize an incomplete mission |
+| Normal lifecycle follows | Main imported-Pi fixture performs Core discovery, inaugural Director, real computation and normal block settlement |
+| Refresh remains separate | Refresh adds candidates without changing the completed snapshot, first objective, or research count; reopening preserves both |
+| Validation remains exact | Same main fixture reaches ten countable blocks, fresh Validator, failed/retried review, and block eleven |
+| No scientific pipeline encoded | Source identifiers and abilities are absent from Core policy; discovery candidates retain generic metadata |
+
+Automated qualification uses real temporary BioLab/Pi SQLite, imported Pi with
+deterministic responses, and actual controlled computation. It is application
+end-to-end qualification, not a live GDC/bio.tools ingestion or browser-driven
+mission claim. Actual external catalog ingestion remains intentionally deferred.
+
+Full production v0 is **not yet release-qualified**. Remaining release checks
+are production mission HTTP commands/scheduling/reconciliation, complete
+activity/history API and UI, process-crash/shutdown checks at that composition,
+and full capability reuse/selection qualification. These remain the acceptance
+criteria for slices 7–10; initialization tests do not waive them. No fake activity
+or autonomous deployed research is introduced by this architecture task.
+
+Verification on 2026-10-05: `npm run check` passed 39 tests in 14 files,
+zero Effect errors/warnings/messages, typechecking, boundaries, lint and both
+workspace builds. A fresh production Chromium run passed eight backend/UI checks:
+real status, competing-owner rejection, render/hydration, reload, mobile layout,
+backend outage without invented status, restart recovery, and integrity of both
+separate SQLite stores after shutdown. Browser artifacts are temporary at
+`/tmp/biojev-genesis-e2e-iBD3wP`; they exercise the implemented status UI, not
+unimplemented mission controls. No dependency or global tooling changes were
+needed for this qualification.

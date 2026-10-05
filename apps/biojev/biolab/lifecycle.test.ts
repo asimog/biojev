@@ -1,7 +1,7 @@
 import { NodeServices } from "@effect/platform-node"
 import { assert, it } from "@effect/vitest"
 import { DateTime, Effect, FileSystem, Path } from "effect"
-import { decision, dossier, report } from "../test/fixtures.ts"
+import { decision, discoveredMap, dossier, report } from "../test/fixtures.ts"
 import { BioLab } from "./BioLab.ts"
 import { BioLabLive } from "./SqliteLive.ts"
 
@@ -27,6 +27,7 @@ it.effect("rejects stale Director handoffs across revision and reopening", () =>
           missionId: "mission",
           statement: "Original mission",
         })
+        yield* lab.recordGenesisDiscovery(discoveredMap("mission"))
         yield* lab.beginRun(identity)
         yield* lab.reviseMission({
           missionId: "mission",
@@ -61,6 +62,7 @@ it.effect("rejects stale Director handoffs across revision and reopening", () =>
           .pipe(Effect.flip)
         assert.equal(error.code, "CONFLICT")
         yield* lab.settleRun(identity.runId)
+        yield* lab.recordGenesisDiscovery(discoveredMap("mission", 2))
         const fresh = yield* lab.beginRun({
           ...identity,
           runId: "new-director",
@@ -156,6 +158,7 @@ it.effect(
             missionId: "mission",
             statement: "An open mission",
           })
+          yield* lab.recordGenesisDiscovery(discoveredMap("mission"))
           assert.isTrue((yield* lab.getLifecycle("mission")).directorRequired)
           const investigate = Effect.fn("test.investigate")(function* (
             index: number,

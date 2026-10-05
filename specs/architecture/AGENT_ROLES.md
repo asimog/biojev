@@ -6,8 +6,8 @@ instructions, authorized tools, extensions, working directory, and ExecutionEnv.
 defines ordering. Role programs, instructions and institutional tools now run
 through imported Harness with the [configured provider](PI_COMPATIBILITY.md#production-model-routing)
 or an explicit test catalog/model pair. Tests exercise their real handoffs,
-freshness, timeout and review gates. Production composition, authenticated
-verification and observation remain pending. Select authorized extensions/tools
+freshness, timeout and review gates. Production composition, full authenticated mission qualification and observation
+remain pending. Provider smoke verification is separate from mission qualification. Select authorized extensions/tools
 explicitly for each role; do not infer authority from a shared registry.
 
 | Role | Input | Output | Lifetime |
@@ -53,3 +53,14 @@ ExecutionEnv. Neither the application nor a role owns a parallel environment.
 Multiple scripts, requests, and measurements may run in parallel; responsibility
 remains with one model for each role invocation. Fresh roles must be able to
 retrieve prior outcomes through institutional records.
+
+## Genesis integration
+
+The inaugural Director receives the Mission and Genesis completeness report,
+searches BioLab for source and capability possibilities, considers uncertainties
+and gaps, and chooses the first bounded ResearchObjective. Jev can assist its
+reasoning. It supplies no mandatory Researcher procedure. The same Director
+continues learning across blocks; its initial choice has no permanent privilege.
+
+[Genesis](GENESIS.md) owns initialization lifecycle, provenance, partial-failure
+policy, and the distinction from later Refresh.

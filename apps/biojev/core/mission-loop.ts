@@ -6,6 +6,7 @@ import type { NextAction } from "./next-action.ts"
 
 export const acquireMissionLoop = Effect.fn("Core.acquireMissionLoop")(
   function* <E, R>(programs: {
+    readonly genesis?: (missionId: string) => Effect.Effect<unknown, E, R>
     readonly director: (missionId: string) => Effect.Effect<unknown, E, R>
     readonly researcher: (missionId: string) => Effect.Effect<unknown, E, R>
     readonly validator: (missionId: string) => Effect.Effect<unknown, E, R>

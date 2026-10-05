@@ -167,6 +167,31 @@ export const makeBioLabTools = Effect.fn("Pi.makeBioLabTools")(
           context,
         ),
     })
+    const searchDiscovery = defineTool({
+      name: "search_discovery",
+      description:
+        "Search retained source/capability candidates, up to 100 per page. Continue with afterId equal to the last returned id. Discovery does not imply qualification.",
+      parameters: Type.Object({
+        text: Type.String(),
+        afterId: Type.Optional(Type.String()),
+      }),
+      replay: "safe",
+      execute: ({ text, afterId }, api, context) =>
+        emit(lab.searchDiscovery(actor.missionId, text, afterId), api, context),
+    })
+    const inspectDiscoveryMeasurement = defineTool({
+      name: "inspect_discovery_measurement",
+      description:
+        "Inspect a retained Genesis or Refresh semantic measurement. It describes meaning, not scientific truth or mandatory action.",
+      parameters: Type.Object({ measurementId: Type.String() }),
+      replay: "safe",
+      execute: ({ measurementId }, api, context) =>
+        emit(
+          lab.getDiscoveryMeasurement(actor.missionId, measurementId),
+          api,
+          context,
+        ),
+    })
     const restoreArtifact = defineTool({
       name: "restore_artifact",
       description:
@@ -467,6 +492,8 @@ export const makeBioLabTools = Effect.fn("Pi.makeBioLabTools")(
       name: `biolab-${actor.runId}`,
       tools: [
         search,
+        searchDiscovery,
+        inspectDiscoveryMeasurement,
         read,
         receipts,
         retainArtifact,

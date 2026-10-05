@@ -9,7 +9,8 @@ defines interfaces; [authority](../architecture/CONSTITUTION.md#authority-and-re
 ```mermaid
 flowchart TD
   Human[Human supplies mission] --> Mission[Retain mission revision]
-  Mission --> Director[Director selects investigation]
+  Mission --> Genesis[Genesis: replaceable broad discovery and Jev-assisted indexing]
+  Genesis --> Director[Inaugural Director selects first investigation]
   Director --> Objective[Retain decision and objective]
   Objective --> Researcher[Fresh Researcher investigates]
   Researcher --> History[Retain results and learning]
@@ -85,6 +86,7 @@ The current policy has this priority:
 | Human stopped mission | STOP |
 | Human paused mission | WAIT |
 | Unfinished work needs reconciliation | RECOVER |
+| Genesis is incomplete | RUN_GENESIS |
 | Ten-block validation is due | RUN_VALIDATOR |
 | Validation report awaits Director review | RUN_DIRECTOR |
 | A strategic decision is required | RUN_DIRECTOR |
@@ -93,8 +95,19 @@ The current policy has this priority:
 
 STOP and WAIT never authorize new cognitive work. Cleanup of already owned work
 is a separate lifecycle obligation. The scheduler must not overlap independent
-logical investigations or bypass validation. Core receives lifecycle facts; it
-never calls Jev or chooses datasets, hypotheses, methods, or representations.
+logical investigations or bypass validation. The pure nextAction policy receives lifecycle facts; it never calls Jev or
+chooses datasets, hypotheses, methods, or representations. Its supplied Genesis
+program can call Jev for required discovery measurements without choosing
+scientific strategy.
+
+## Initial discovery and inaugural direction
+
+[Genesis](../architecture/GENESIS.md) owns initialization states, replacement,
+partial-failure sufficiency, provenance, and Refresh semantics. The scheduler
+requests its supplied discovery program before the first Director handoff. The
+existing Pi Director searches the persisted map and creates the first decision
+and objective; only then can normal research begin. Genesis and Refresh are
+excluded from the research count. Recovery precedes a new initialization attempt.
 
 ## Director handoff
 

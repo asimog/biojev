@@ -57,7 +57,8 @@ cancellation, and reopen qualification. BioLab mission storage and startup
 ownership are implemented. Pi-owned Linux computation, artifact retention, and
 cleanup are qualified at the integration seam. Role programs, handoffs, validation,
 commands and conservative recovery now run through real stores in deterministic
-integration tests. Production composition, semantic/capability tools and live
+integration tests. Semantic/capability tools and a committed activity projection are implemented.
+Production composition, full capability reuse qualification, and live UI
 observation remain unfinished; resource availability does not authorize scheduling.
 
 ## Depth and testability
@@ -80,3 +81,12 @@ contracts are not evidence of completed deep implementations.
 
 [Constitution and authority](CONSTITUTION.md), and
 [workflows](../workflows/README.md) define the behavioral obligations.
+
+## Genesis integration
+
+Genesis is an initialization phase coordinated by Core, with a replaceable
+discovery program supplied by composition. It uses BioLab and Jev before the
+existing inaugural Director; it introduces no application peer or new role.
+
+[Genesis](GENESIS.md) owns initialization lifecycle, provenance, partial-failure
+policy, and the distinction from later Refresh.

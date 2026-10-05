@@ -134,3 +134,13 @@ Repeated agent mistakes should become, in order:
 5. only then a larger instruction.
 
 Keep changes small. New requirement = new task.
+
+## Genesis
+
+Before changing initialization, discovery, or catalog refresh, read
+`specs/architecture/GENESIS.md`. Supply a replaceable discovery program through
+application composition. BioLab retains broad candidates; Jev annotates without
+pruning; the existing Director chooses the initial objective. Genesis must
+complete before ResearchBlock #1 and never counts toward validation. Source
+identifiers and capabilities are data, never Core policy. Refresh preserves
+completed Genesis.
