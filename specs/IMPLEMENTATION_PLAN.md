@@ -424,9 +424,10 @@ mission claim. Actual external catalog ingestion remains intentionally deferred.
 Local Linux v0 is qualified against the acceptance checks below. This is a
 single-operator loopback deployment, with configured Linux isolation prerequisites,
 provider credentials and a supplied catalog. External catalog ingestion is still
-intentionally deferred. A paid-provider ten-block scientific trajectory was not
-claimed: deterministic imported-Pi tests qualify that trajectory, and configured
-provider/operator checks separately verify real transport and computation.
+intentionally deferred. Deterministic imported-Pi tests qualify the failure and
+recovery paths. The later configured five-minute live run completed a real-provider
+ten-block window, Validator and Director review; its report distinguishes lifecycle
+completion from the trajectory’s scientific and retrieval limitations.
 
 | Acceptance area | Evidence |
 | --- | --- |
@@ -492,3 +493,15 @@ separate SQLite stores after shutdown. Browser artifacts are temporary at
 `/tmp/biojev-genesis-e2e-iBD3wP`; they exercise the implemented status UI, not
 unimplemented mission controls. No dependency or global tooling changes were
 needed for this qualification.
+
+## Configured five-minute live lifecycle
+
+On 2026-10-05, a real-provider computational-methods mission completed Genesis,
+ten countable ResearchBlocks, fresh Validator, and Director review. Every research
+block completed inside five minutes; Validator completed in 136.7 seconds. The
+mission was explicitly stopped after review, orphaning the already-admitted
+eleventh attempt. [Live run report](LIVE_RUN_REPORT.md) records each block,
+canonical evidence and material agent retrieval/reasoning errors. This verifies
+the live lifecycle, not scientific effectiveness: repeated probes and unsupported
+interpretations remain visible. BIOJEV_BLOCK_TIMEOUT_MS configures role limits;
+the default remains ten minutes and this run used 300000.

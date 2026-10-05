@@ -343,6 +343,10 @@ export const acquireRolePrograms = Effect.fn("Pi.acquireRolePrograms")(
               role,
               runId,
               blockId,
+              timeBudgetMs: timeout,
+              deadline: now + timeout,
+              handoffGuidance:
+                "Reserve time to submit_handoff before the deadline. A small honest completed investigation or explicit no-results dossier is preferable to unfinished work. Time limits constrain scope, not scientific method.",
               lifecycle: before,
               genesis: yield* lab.getGenesis(missionId),
               ...(role !== "researcher" || before.objectiveId === undefined

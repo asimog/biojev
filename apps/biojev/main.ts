@@ -10,6 +10,7 @@ import { BioLabLive } from "./biolab/SqliteLive.ts"
 import {
   ApplicationPaths,
   BioJevConfig,
+  BlockTimeoutMs,
   LinuxNetworkConfig,
   OpenRouterKey,
   OpenRouterModelConfig,
@@ -62,6 +63,7 @@ const program = Effect.scoped(
         const selection = yield* OpenRouterModelConfig
         const roles = yield* acquireRolePrograms({
           database: ownership.piDatabase,
+          blockTimeoutMs: yield* BlockTimeoutMs,
           models: createResearchModels(
             Option.getOrUndefined(openRouterKey),
             selection,

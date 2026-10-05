@@ -46,8 +46,10 @@ environments and Director selection/rollback. Production checks qualify cognitiv
 crash recovery, interrupted Researcher recovery with unchanged results, and active
 SIGTERM settlement before SQLite release. Populated desktop/mobile observation,
 reload, outage and restart checks pass. Local Linux v0 is qualified with a
-deterministic complete trajectory and separate configured-provider checks; a full
-paid-provider research window is not claimed. Validator is required for v0.
+deterministic complete trajectory and configured-provider checks. A real-provider
+ten-block window, fresh Validator and Director review have also completed; the
+[live report](specs/LIVE_RUN_REPORT.md) records timings and research-quality
+limitations. Validator is required for v0.
 
 Speculative runtime/execution Services, role/tool factories, and comment-only
 implementation files were removed. Implementation directories are created when

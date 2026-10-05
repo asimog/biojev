@@ -1,4 +1,4 @@
-import { Config } from "effect"
+import { Config, Schema } from "effect"
 
 /**
  * Process configuration belongs here.
@@ -59,3 +59,8 @@ export const ApplicationPaths = Config.all({
     Config.withDefault("data/workspaces"),
   ),
 })
+
+export const BlockTimeoutMs = Config.schema(
+  Schema.Int.check(Schema.isGreaterThan(0)),
+  "BIOJEV_BLOCK_TIMEOUT_MS",
+).pipe(Config.withDefault(600000))
