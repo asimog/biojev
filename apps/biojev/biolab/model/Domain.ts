@@ -9,14 +9,15 @@ export type CanonicalRef = typeof CanonicalRef.Type
 export const ScientificResult = Schema.Struct({
   resultId: Schema.String,
   originRunId: Schema.String,
-  originBlockId: Schema.optional(Schema.String),
-  executionReceiptId: Schema.optional(Schema.String),
-  sourceRef: Schema.optional(Schema.String),
-  capabilityVersionId: Schema.optional(Schema.String),
+  originBlockId: Schema.optionalKey(Schema.String),
+  executionReceiptId: Schema.NonEmptyString,
+  sourceRef: Schema.optionalKey(Schema.String),
+  capabilityVersionId: Schema.optionalKey(Schema.String),
   inputRefs: Schema.Array(CanonicalRef),
   outputRefs: Schema.Array(CanonicalRef),
   summary: Schema.String,
   missingness: Schema.Array(Schema.String),
+  value: Schema.optionalKey(Schema.Json),
 })
 export type ScientificResult = typeof ScientificResult.Type
 
@@ -54,31 +55,48 @@ export const ResultAssessment = Schema.Struct({
   strengths: Schema.Array(Schema.String),
   concerns: Schema.Array(Schema.String),
   relatedRefs: Schema.Array(CanonicalRef),
-  recommendedFollowUp: Schema.optional(Schema.String),
+  recommendedFollowUp: Schema.optionalKey(Schema.String),
   originRunId: Schema.String,
 })
 export type ResultAssessment = typeof ResultAssessment.Type
 
 export const CapabilityVersion = Schema.Struct({
-  capabilityId: Schema.String,
-  versionId: Schema.String,
-  name: Schema.String,
-  description: Schema.String,
-  executionDescriptor: Schema.Unknown,
-  qualificationSummary: Schema.optional(Schema.String),
-  status: Schema.Literals(["EXPERIMENTAL", "QUALIFIED", "ACTIVE", "RETIRED"]),
+  capabilityId: Schema.NonEmptyString,
+  versionId: Schema.NonEmptyString,
+  name: Schema.NonEmptyString,
+  description: Schema.NonEmptyString,
+  executionDescriptor: Schema.JsonObject,
+  artifactRefs: Schema.Array(CanonicalRef).check(Schema.isMinLength(1)),
+  qualificationResultRefs: Schema.Array(CanonicalRef),
+  status: Schema.Literals(["EXPERIMENTAL", "QUALIFIED"]),
+  originRunId: Schema.NonEmptyString,
 })
 export type CapabilityVersion = typeof CapabilityVersion.Type
 
 export const CapabilityAssessment = Schema.Struct({
-  assessmentId: Schema.String,
-  capabilityId: Schema.String,
-  versionId: Schema.String,
-  actorRole: Schema.Literals(["director", "researcher", "validator"]),
-  summary: Schema.String,
+  assessmentId: Schema.NonEmptyString,
+  versionRef: CanonicalRef,
+  summary: Schema.NonEmptyString,
   strengths: Schema.Array(Schema.String),
   concerns: Schema.Array(Schema.String),
   basisRefs: Schema.Array(CanonicalRef),
-  originRunId: Schema.String,
+  actorRole: Schema.Literals(["director", "researcher", "validator"]),
+  originRunId: Schema.NonEmptyString,
 })
 export type CapabilityAssessment = typeof CapabilityAssessment.Type
+
+export const Failure = Schema.Struct({
+  failureId: Schema.NonEmptyString,
+  originRunId: Schema.NonEmptyString,
+  summary: Schema.NonEmptyString,
+  basisRefs: Schema.Array(CanonicalRef),
+})
+export type Failure = typeof Failure.Type
+
+export const Uncertainty = Schema.Struct({
+  uncertaintyId: Schema.NonEmptyString,
+  originRunId: Schema.NonEmptyString,
+  question: Schema.NonEmptyString,
+  basisRefs: Schema.Array(CanonicalRef),
+})
+export type Uncertainty = typeof Uncertainty.Type

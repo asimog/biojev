@@ -1,11 +1,13 @@
 export type NextAction =
+  | "STOP"
   | "WAIT"
   | "RECOVER"
   | "RUN_DIRECTOR"
-  | "RUN_RESEARCH_BLOCK"
-  | "RUN_VALIDATION"
+  | "RUN_RESEARCHER"
+  | "RUN_VALIDATOR"
 
 export interface MissionLifecycleState {
+  readonly stopped: boolean
   readonly paused: boolean
   readonly recoveryRequired: boolean
   readonly validationDue: boolean
@@ -20,11 +22,12 @@ export interface MissionLifecycleState {
  * It decides WHEN work may happen. It does not decide scientific strategy.
  */
 export const nextAction = (state: MissionLifecycleState): NextAction => {
+  if (state.stopped) return "STOP"
   if (state.paused) return "WAIT"
   if (state.recoveryRequired) return "RECOVER"
-  if (state.validationDue) return "RUN_VALIDATION"
+  if (state.validationDue) return "RUN_VALIDATOR"
   if (state.validationCompletedAwaitingDirectorReview) return "RUN_DIRECTOR"
   if (state.directorRequired) return "RUN_DIRECTOR"
-  if (state.objectiveReady) return "RUN_RESEARCH_BLOCK"
+  if (state.objectiveReady) return "RUN_RESEARCHER"
   return "WAIT"
 }

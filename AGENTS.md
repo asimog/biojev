@@ -2,14 +2,16 @@
 
 Verify repository truth first: HEAD, code, config, tests, and installed versions.
 
+Before changing authority, agent roles, persistence, or computation boundaries, read `specs/architecture/CONSTITUTION.md`. It is the authoritative design specification.
+
 ## Architecture
 
 - `core` controls what is legally allowed to run next.
 - `agents` decide what and how.
 - BioLab is the sole canonical institutional memory and capability authority.
 - JevEngine measures semantic questions.
-- AgentRuntime runs cognition through Pi Durable.
-- ExecutionEnv provides broad computation inside a controlled environment.
+- Pi Durable runs Director, Researcher, and Validator and alone owns cognition, durable tool tasks, cancellation, and ExecutionEnv.
+- Pi-owned ExecutionEnv provides broad controlled computation; it is not an application peer.
 - Next.js observes and sends explicit human commands.
 
 Execution is provided by ExecutionEnv; no separate execution subsystem exists.
@@ -35,14 +37,23 @@ Execution is provided by ExecutionEnv; no separate execution subsystem exists.
 17. Validation occurs after ten countable ResearchBlocks.
 18. Effect manages application mechanics; Pi manages agents.
 19. UI state and SSE events are not canonical scientific state.
+20. Strong institutional boundaries; weak scientific choreography.
+
+Validator is required in v0. Only an explicit human stop ends a mission. Pause saves active research as an orphan block; resume continues the mission with new legal work. Cancelled/orphan blocks do not count toward validation. After ten countable research blocks, Validator gets its own block, then Director reviews before the next ten research blocks.
 
 ## Effect
 
-For unfamiliar Effect work:
-1. read installed `node_modules/effect/AGENTS.md` if present;
-2. read `repos/effect/LLMS.md` if vendored;
-3. inspect relevant Effect source/tests;
-4. do not guess v3 APIs from memory.
+### Learning more about Effect
+
+This repository uses the Effect TypeScript library.
+
+Before writing any Effect code, first read `node_modules/effect/AGENTS.md`
+**completely**, and follow the links in the file when required.
+
+For APIs and concepts the guide does not cover, inspect
+`node_modules/effect/src` and relevant installed documentation/tests.
+Use `repos/effect/LLMS.md` for additional reference. Installed source defines the
+API contract; do not guess v3 APIs from memory.
 
 Use:
 - programs for behavior;
@@ -58,15 +69,30 @@ Normal application code must not use raw `node:fs`, `node:path`, `node:child_pro
 
 ## Pi
 
-Only `apps/biojev/agent-runtime/**` may import Pi/Chord packages.
+Only `apps/biojev/platform/pi/**` may import Pi/Chord packages, including integration tests.
 
-Do not rebuild Pi conversation/task durability in Effect.
+Use scoped Pi Harness resources and role programs. BioLab and JevEngine are the initial application Services. Pi alone owns ExecutionEnv, including environment selection, isolation, process lifetime, and cleanup. Effect manages Pi Harness resources and requests work/abort through Pi. No separate AgentRuntime Service, Effect ExecutionEnv Service, or execution subsystem is introduced.
+
+Import only Pi Durable, Pi AI, and Chord from platform/pi. Read
+the dependency decision in specs/architecture/PI_COMPATIBILITY.md before adding
+other Pi packages. Package files live in npm-managed node_modules; platform/pi
+contains only BioJev integration and its tests. Keep one root lockfile. Do not
+vendor or clone Pi into repos/pi or copy upstream code into platform/pi.
+
+Effect may acquire/release imported Pi resources. It must not reimplement Pi
+conversations, model turns, task scheduling, resume, compaction, tools, or runtime
+durability. Read the installed package README/types/source before
+changing its integration.
+
+Pi tool callbacks use Pi-owned ExecutionEnv for computation and authorized
+BioLab operations for canonical writes. Tool availability does not confer
+recording authority or establish host isolation.
 
 ResearchBlock timeout must explicitly abort Pi-owned work before the block becomes TIMED_OUT.
 
 ## ExecutionEnv
 
-ExecutionEnv is broad by design. It may support:
+ExecutionEnv is owned only by Pi and remains broad by design. It may support:
 - read/write/edit files
 - shell/process execution
 - network requests

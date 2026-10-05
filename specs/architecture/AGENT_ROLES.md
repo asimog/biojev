@@ -1,229 +1,55 @@
-# Agent roles and authority
+# Cognitive roles and handoff interfaces
+
+Pi Durable runs exactly three roles. Each is primarily a Pi configuration: model,
+instructions, authorized tools, extensions, working directory, and ExecutionEnv.
+[Authority](CONSTITUTION.md#authority-and-recording-permissions) defines permissions; [workflows](../workflows/README.md)
+defines ordering. Role programs, instructions and institutional tools now run
+through imported Harness with the [configured provider](PI_COMPATIBILITY.md#production-model-routing)
+or an explicit test catalog/model pair. Tests exercise their real handoffs,
+freshness, timeout and review gates. Production composition, authenticated
+verification and observation remain pending. Select authorized extensions/tools
+explicitly for each role; do not infer authority from a shared registry.
+
+| Role | Input | Output | Lifetime |
+| --- | --- | --- | --- |
+| Director | Mission revision, recent handoffs, pending validation, institutional references | DirectorDecision and one bounded ResearchObjective | One mission-persistent conversation; recover from BioLab if runtime state is lost |
+| Researcher | ResearchObjective and accessible institutional references | ResearchDossier and attributable records produced during investigation | Fresh conversation for each new ResearchBlock |
+| Validator | Exact ten-block window and its institutional history | ValidationReport and any reproduction/check records | Fresh conversation and clean environment for its own ValidationBlock per ValidationCycle |
 
 ## Director
 
-Director is BioJev's persistent strategic intelligence.
+Director asks which investigation is most valuable given the mission and what
+BioJev has learned. It retrieves history itself, assesses results, uncertainties,
+contradictions and capability limitations, and responds to Validator criticism.
+Its institutional rationale is concise and explicit, not hidden chain-of-thought.
+Director exclusively chooses whether to continue, branch, replicate, revisit,
+defer, or abandon an investigation, and selects qualified capability defaults.
+Shell access supports strategy; it does not make Director the Researcher for
+whole blocks.
 
-Question:
-
-> Given the mission and everything BioJev has learned, what investigation is most valuable next?
-
-Director owns:
-- global research direction;
-- creation of the next ResearchObjective;
-- continue / branch / replicate / revisit / defer / abandon decisions;
-- cross-block prioritization;
-- response to Validator criticism;
-- strategic capability decisions.
-
-### Director learning loop
-
-```text
-Observe
--> Retrieve
--> Assess
--> Learn
--> Decide
-```
-
-Observe:
-- latest ResearchDossier
-- ScientificResults
-- Interpretations
-- Hypothesis revisions
-- ResultAssessments
-- Failures / Uncertainties
-- Capability changes
-- ValidationReport
-- important SemanticMeasurements
-
-Retrieve:
-- related BioLab memory
-- old contradictions
-- past failures
-- old hypotheses
-- prior Director decisions
-- capability performance
-- Validator criticism
-
-Assess:
-- did the block answer its objective?
-- what changed?
-- what is weak, contradictory, or surprising?
-- what needs replication?
-- which hypotheses should change?
-- which capabilities are inadequate?
-- which new capability would unlock a better investigation?
-- did the system misuse memory or Jev?
-
-Learn:
-Director may use authorized BioLab tools to:
-- record Interpretation;
-- record ResultAssessment;
-- revise Hypothesis;
-- record CapabilityAssessment;
-- register a new CapabilityVersion when justified;
-- activate a qualified CapabilityVersion;
-- record DirectorDecision.
-
-Decide:
-- produce one next ResearchObjective.
-
-Director may use ExecutionEnv when useful. Access to execution does not transfer Researcher's local authority.
-
-### Director input
-
-```text
-DirectorInput
-  missionRevisionRef
-  previousDirectorDecisionRef?
-  latestResearchDossierRef?
-  pendingValidationReportRef?
-  newCanonicalRefs[]
-  activeConstraints[]
-  configurationSnapshotRef
-```
-
-### Director output
-
-```text
-DirectorDecision
-  basisRefs[]
-  strategicSummary
-  importantChanges[]
-  importantUncertainties[]
-  hypothesisActions[]
-  capabilityActions[]
-  basisValidationReportId?
-  nextObjective
-```
-
-Director must not:
-- dictate a universal Researcher procedure;
-- invent ScientificResults;
-- rewrite old ScientificResults;
-- use highest Jev score as automatic policy;
-- become a hand-coded frontier algorithm.
-
-Invariant:
-
-> Director chooses the problem. Researcher chooses the method.
+An objective states what matters: determine whether a finding survives an
+independently defined cohort. Candidate directions are suggestions, not commands
+to download one source, apply one model, or ask a fixed number of Jev questions.
 
 ## Researcher
 
-Researcher is the autonomous scientist for one ResearchBlock.
-
-Question:
-
-> Given this ResearchObjective, how should I investigate it?
-
-Every new block gets a fresh Pi conversation.
-
-Researcher owns:
-- local action ordering;
-- search strategy;
-- representation choice;
-- method choice;
-- code/tool choice;
-- hypothesis generation;
-- when to use Jev;
-- when to search literature;
-- when to compute;
-- when to change/abandon/follow an unexpected direction.
-
-Researcher may:
-- search BioLab;
-- use public APIs and literature;
-- download data;
-- clone repositories;
-- write files/programs;
-- run Python, R, Rust, compilers, CLI tools;
-- install temporary dependencies inside the environment;
-- create plots;
-- compare representations;
-- use Jev;
-- form/revise hypotheses;
-- discover/create reusable capabilities.
-
-No prescribed sequence.
-No subagents.
-
-Researcher must not:
-- control global mission strategy;
-- write raw canonical SQL;
-- silently edit old ScientificResults;
-- treat Jev confidence as biological/statistical confidence;
-- claim execution occurred when it did not;
-- change institutional authority rules.
-
-## ResearchDossier
-
-Researcher's block synthesis:
-
-```text
-summary
-scientificResultRefs[]
-resultAssessmentRefs[]
-interpretationRefs[]
-hypothesisRefs[]
-hypothesisChanges[]
-semanticMeasurementRefs[]
-capabilityRefs[]
-capabilityChanges[]
-failureRefs[]
-uncertainties[]
-contradictions[]
-openQuestions[]
-suggestedNextDirections[]
-```
-
-The dossier is not the truth store. Its referenced BioLab records are canonical.
+Researcher owns local action ordering, search, representation, method, code,
+hypothesis generation, and changes of approach. It may investigate unexpected
+findings, use temporary dependencies, develop capabilities, or omit Jev.
+Long-term learning comes from BioLab rather than an inherited previous transcript.
+A resumed unfinished block retains its existing logical identity and conversation
+where available; it is not a new block. Pause/cancellation instead orphan the
+active investigation; mission resume does not resume that orphan.
 
 ## Validator
 
-Validator is fresh independent review after every ten countable ResearchBlocks.
+Validator critiques search, computation, judgment, memory, capabilities, and Jev
+use across the exact window. It can reproduce work, redownload data, write
+independent implementations, and identify tunnel vision or missed opportunities.
+Recommendations inform Director; they do not directly change research direction.
 
-Question:
-
-> Is BioJev searching, computing, judging, remembering and learning effectively?
-
-Validator may:
-- inspect the trajectory;
-- search BioLab;
-- rerun computations in its ExecutionEnv;
-- redownload data;
-- use alternative methods;
-- inspect contradictions;
-- inspect capability performance;
-- inspect Jev use;
-- identify missed opportunities;
-- identify Director/Researcher tunnel vision.
-
-Output:
-
-```text
-ValidationReport
-  blockRefs[]
-  summary
-  resultFindings[]
-  reproductionFindings[]
-  methodologicalConcerns[]
-  missedOpportunities[]
-  hypothesisFindings[]
-  capabilityFindings[]
-  memoryFindings[]
-  jevFindings[]
-  recommendations[]
-  importantRefs[]
-```
-
-Validator must not:
-- choose next ResearchObjective;
-- activate capabilities;
-- silently revise hypotheses;
-- rewrite ScientificResults;
-- change prompts/policy.
-
-Invariant:
-
-> Validator informs. Director decides.
+All roles have authorized BioLab/Jev tools and computation through Pi-owned
+ExecutionEnv. Neither the application nor a role owns a parallel environment.
+Multiple scripts, requests, and measurements may run in parallel; responsibility
+remains with one model for each role invocation. Fresh roles must be able to
+retrieve prior outcomes through institutional records.

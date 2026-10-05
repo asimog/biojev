@@ -25,6 +25,31 @@
         },
         "overrides": [
           {
+            "include": ["jevengine/TypeSafeLive.test.ts"],
+            "options": {
+              "allowedUnstableApis": [
+                "effect/http/HttpServer#HttpServer",
+                "effect/http/HttpRouter#add",
+                "effect/http/HttpRouter#serve",
+                "effect/http/HttpServerResponse#json",
+                "effect/http/HttpServerRequest#HttpServerRequest",
+                "effect/net/NetAddress#toUrl"
+              ]
+            }
+          },
+          {
+            "include": ["jevengine/TypeSafeLive.ts"],
+            "options": {
+              "allowedUnstableApis": [
+                "effect/http/HttpClient#HttpClient",
+                "effect/http/HttpClientRequest#post",
+                "effect/http/HttpClientRequest#bodyText",
+                "effect/http/HttpClientRequest",
+                "effect/http/HttpIncomingMessage#MaxBodySize"
+              ]
+            }
+          },
+          {
             "include": ["main.ts"],
             "options": {
               "allowedUnstableApis": ["effect/http/HttpRouter#serve"]
@@ -45,6 +70,58 @@
               "allowedUnstableApis": [
                 "effect/http/HttpClient#HttpClient",
                 "effect/http/HttpRouter#serve"
+              ]
+            }
+          },
+          {
+            "include": ["biolab/SqliteLive.ts"],
+            "options": {
+              "allowedUnstableApis": [
+                "effect/sql/SqlClient#SqlClient",
+                "effect/sql/Migrator#fromRecord"
+              ]
+            }
+          },
+          {
+            "include": ["platform/ownership.ts"],
+            "options": {
+              "allowedUnstableApis": [
+                "effect/process/ChildProcess",
+                "effect/process/ChildProcessSpawner#ChildProcessSpawner"
+              ]
+            }
+          },
+          {
+            "include": ["platform/pi/execution-env/Linux.ts"],
+            "options": {
+              "allowedUnstableApis": [
+                "effect/process/ChildProcess",
+                "effect/process/ChildProcessSpawner#ChildProcessSpawner"
+              ]
+            }
+          },
+          {
+            "include": ["platform/pi/execution-env/Linux.test.ts"],
+            "options": {
+              "allowedUnstableApis": [
+                "effect/http/HttpRouter#serve",
+                "effect/http/HttpClient#HttpClient",
+                "effect/http/HttpServer#HttpServer"
+              ]
+            }
+          },
+          {
+            "include": ["biolab/recording.ts"],
+            "options": {
+              "allowedUnstableApis": ["effect/sql/SqlClient#SqlClient"]
+            }
+          },
+          {
+            "include": ["biolab/lifecycle.ts"],
+            "options": {
+              "allowedUnstableApis": [
+                "effect/sql/SqlClient#SqlClient",
+                "effect/sql/SqlError#SqlError"
               ]
             }
           }

@@ -6,9 +6,9 @@ export { CanonicalRef }
 
 export const DirectorInput = Schema.Struct({
   missionRevisionRef: CanonicalRef,
-  previousDirectorDecisionRef: Schema.optional(CanonicalRef),
-  latestResearchDossierRef: Schema.optional(CanonicalRef),
-  pendingValidationReportRef: Schema.optional(CanonicalRef),
+  previousDirectorDecisionRef: Schema.optionalKey(CanonicalRef),
+  latestResearchDossierRef: Schema.optionalKey(CanonicalRef),
+  pendingValidationReportRef: Schema.optionalKey(CanonicalRef),
   newCanonicalRefs: Schema.Array(CanonicalRef),
   activeConstraints: Schema.Array(Schema.String),
   configurationSnapshotRef: CanonicalRef,
@@ -39,7 +39,7 @@ export const DirectorDecision = Schema.Struct({
   hypothesisActions: Schema.Array(Schema.String),
   capabilityActions: Schema.Array(Schema.String),
   nextObjective: ResearchObjective,
-  basisValidationReportId: Schema.optional(Schema.String),
+  basisValidationReportId: Schema.optionalKey(Schema.String),
 })
 export type DirectorDecision = typeof DirectorDecision.Type
 

@@ -8,7 +8,7 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true
+      "preset": "recommended"
     }
   },
   "javascript": {
@@ -22,7 +22,9 @@
       "**",
       "!**/.next",
       "!**/node_modules",
-      "!**/next-env.d.ts"
+      "!**/next-env.d.ts",
+      "!repos",
+      "!.agents"
     ]
   }
 }

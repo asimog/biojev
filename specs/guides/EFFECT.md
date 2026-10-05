@@ -1,128 +1,151 @@
-# Effect guide for BioJev
+# Application composition guide
 
-Use the installed Effect version as the contract.
+Use installed source as the contract. Follow the learning instructions in
+[AGENTS.md](../../AGENTS.md#learning-more-about-effect) before writing Effect code.
+Manifests and the lockfile define installed versions; do not duplicate their
+inventory in documentation.
 
-For unfamiliar work:
-1. inspect `node_modules/effect/AGENTS.md`;
-2. inspect `repos/effect/LLMS.md` if vendored;
-3. inspect relevant ai-docs;
-4. inspect relevant source/tests.
+## Constructs and module depth
 
-Do not guess old Effect v3 APIs.
+Use pure functions for deterministic transformations, Effect programs for
+behavior with dependencies/failures/resources, Effect Services for genuine
+capabilities, and Layers for concrete provision. BioLab and JevEngine are the
+initial application capability modules; domain records are shapes, not
+one capability per noun. Pi Harness is scoped infrastructure, not a second
+conversation/task implementation.
 
-## Use the right abstraction level
+Accept dependencies at program interfaces. Provide long-lived implementations
+at the composition root. Keep transactions local to BioLab, rendering local to
+Jev, and ExecutionEnv isolation and cleanup local to Pi. Role callers use those
+interfaces.
+Use typed errors and explicit resource lifetimes. Shape validation does not
+replace the [authority checks](../architecture/CONSTITUTION.md#authority-and-recording-permissions).
 
-```text
-pure function
-  deterministic transformation
+Portable filesystem, path, HTTP and process interfaces belong at controlled
+infrastructure seams. Normal application code uses no raw filesystem/process/path
+or backend fetch. A genuinely missing portable capability requires a documented
+platform implementation while callers keep the same controlled interface.
 
-Effect program
-  dependencies, failures, async, resources
+NodeRuntime.runMain stays at the process entrypoint. Domain programs return
+Effects. Pi owns cognition and tool durability; application programs enforce
+institutional sequencing and request cleanup through each owner's interface.
+Pi alone acquires, uses, and cleans ExecutionEnv. Effect supplies configuration,
+timeouts, retries, and scoped Pi lifetime without another computation subsystem. See
+[workflows](../workflows/README.md) for resource and failure ordering.
 
-Effect Service
-  genuine reusable capability
+## Promise-based Pi resources
 
-Layer
-  concrete implementation
-```
+The platform Harness resource uses Effect.fn and acquireRelease only to open
+and close the imported Pi SQLite storage and Harness. Effect implements no
+VM, agent loop, or tool-task runtime.
+The [Pi dependency decision](../architecture/PI_COMPATIBILITY.md#dependency-decision-from-installed-source)
+defines the three required Pi imports. Map expected opening failures to
+PiResourceError; keep mandatory release failures visible. Acquisition and finalization use a cleanup
+context that cannot expire midway through releasing ownership.
 
-Do not create an Effect Service for every domain noun.
+For role calls, bridge Effect interruption to a Chord context and explicitly
+abort owned Pi work when the institutional workflow requires it. A cancelled
+Promise wait or closed Harness is insufficient. The role programs now implement
+this bridge separately from Harness acquisition. Keep Pi handles inside platform/pi;
+application contracts remain independent of runtime types.
 
-Likely high-value Services:
-- BioLab
-- JevEngine
-- AgentRuntime
-- ExecutionEnv
+ExecutionEnv callbacks are a foreign Promise boundary. Its Linux adapter captures
+the platform Context and invokes runPromiseWith only when Pi calls an environment
+method; it never runs an Effect inside another application Effect. Cancellation
+is bridged to the scoped operation, and cleanup awaits actual namespace teardown.
+The checker allowlists the specific foreign callback files described here, and keeps application runners
+restricted to the entrypoint. The private relay imports Pi's NodeExecutionEnv
+and uses native stdin/stdout for transport; the fixed namespace adapter uses a
+Linux ioctl unavailable in portable Effect/Node. Both are documented platform
+edges, not alternative application services or cognition implementations.
 
-Core lifecycle and agent invocation logic are programs.
+Authorized BioLab tool callbacks use the same Context runner at platform/pi/tools.ts.
+Their programs call BioLab with trusted object capabilities. Effect Schema
+validates the canonical boundary and supplies the imported tool's JSON Schema.
+Pi's TypeBox wrapper types its registration; it introduces no competing domain
+model. Models cannot mint authority by serializing run/role fields.
 
-## Preferred Effect mechanisms
+TypeSafeLive.ts also uses a captured HttpClient Context only at the imported
+SDK's Promise HTTP callback. The checker allowlists that exact file. Each
+callback buffers its response inside an Effect Scope and releases HTTP resources
+before returning the SDK's Web Response. The SDK's AbortSignal interrupts the
+HTTP operation. NodeHttpClient.layerNodeHttp enforces the body-size reference;
+the Node transport and cancellation are qualified by local HTTP tests. No raw
+backend fetch or nested application runner is introduced.
 
-Use Effect for:
-- typed effects
-- Context.Service
-- Layers
-- Scope/resource lifetime
-- Config
-- Schema
-- Schedule
-- Stream/PubSub
-- HTTP
-- FileSystem/Path
-- ChildProcess/ChildProcessSpawner
-- SQL
-- logging/observability
-- Vitest integration
+## Verified installed conventions
 
-## Do not duplicate owners
+Context.Service and Schema.TaggedError define capabilities and expected errors.
+Config.String/Port and Schema.Literals arrays use current spellings.
+NodeServices provides filesystem/path/process support but not HttpClient;
+provide HTTP transport explicitly. The installed SQLite implementation exposes
+both its concrete and generic SQL interfaces with scoped lifetime.
+Recheck these facts against installed source before changing integrations.
 
-Pi Durable owns agent conversation/task durability.
+## Exact unstable uses
 
-Do not rebuild that with Effect Workflow or a second agent framework.
+| Export | Allowed file |
+| --- | --- |
+| effect/http/HttpRouter#add | apps/biojev/http/status.ts |
+| effect/http/HttpServerResponse#json | apps/biojev/http/status.ts |
+| effect/http/HttpRouter#serve | apps/biojev/main.ts; apps/biojev/test/status.test.ts |
+| effect/http/HttpClient#HttpClient | apps/biojev/test/status.test.ts |
+| effect/http/HttpClient#HttpClient; HttpClientRequest#post; HttpClientRequest#bodyText; HttpIncomingMessage#MaxBodySize | apps/biojev/jevengine/TypeSafeLive.ts |
+| effect/http/HttpServer#HttpServer; HttpRouter#add; HttpRouter#serve; HttpServerRequest#HttpServerRequest; HttpServerResponse#json; effect/net/NetAddress#toUrl | apps/biojev/jevengine/TypeSafeLive.test.ts |
 
-BioLab typed records are canonical institutional history.
+| Institutional / infrastructure use | Allowed file |
+| --- | --- |
+| effect/sql/SqlClient#SqlClient | apps/biojev/biolab/SqliteLive.ts; apps/biojev/biolab/recording.ts; apps/biojev/biolab/lifecycle.ts |
+| effect/sql/SqlError#SqlError (type only) | apps/biojev/biolab/lifecycle.ts |
+| effect/sql/Migrator#fromRecord | apps/biojev/biolab/SqliteLive.ts |
+| effect/process/ChildProcess (make only) | apps/biojev/platform/ownership.ts; apps/biojev/platform/pi/execution-env/Linux.ts |
+| effect/process/ChildProcessSpawner#ChildProcessSpawner | apps/biojev/platform/ownership.ts; apps/biojev/platform/pi/execution-env/Linux.ts |
+| effect/http/HttpRouter#serve; HttpClient#HttpClient; HttpServer#HttpServer | apps/biojev/platform/pi/execution-env/Linux.test.ts |
 
-Do not add a universal event ledger just because Effect provides event-oriented facilities.
+ChildProcess is marked unstable at module level in the installed source, so its
+allowance is confined to the ownership and Linux environment files, which use
+only make. The fixed ownership
+infrastructure process holds Linux flock locks on both store files. Its stdin
+closes when the parent exits, releasing ownership without a stale PID file.
+It executes no agent commands; agent computation remains inside Pi-owned
+ExecutionEnv. The boundary checker allows this one infrastructure file in
+addition to the Pi execution implementation.
 
-Pi owns LLM runtime cognition.
+The compiler configuration allowlists these exact exports by file. Other
+unstable/experimental diagnostics remain strict. createServer is isolated in
+platform/HttpLive.ts because the Node server constructor requires it; application
+composition retains ownership of serving and cleanup. Recheck on upgrade.
 
-Do not add Effect AI as a second agent orchestrator.
+The installed checker reports the overloaded bodyText combinator as the
+HttpClientRequest module. That module allowance is confined to TypeSafeLive.ts,
+which uses only post and bodyText; all other files retain strict diagnostics.
 
-## Platform boundary
+## Editor and diagnostics
 
-Application programs and ExecutionEnv depend on portable Effect services.
+The workspace settings select the native TypeScript SDK patched by @effect/tsgo.
+Workspace extension recommendations are authoritative. Reload the editor and
+open a TypeScript file after setup changes. Do not install a parallel standalone
+tsgo. Setup defaults may remove explicit diagnostic severities: inspect and
+reconcile the diff instead of accepting a weaker configuration.
 
-Concrete Node implementations are supplied at the edge through `@effect/platform-node`.
+Biome provides editor lint diagnostics, formatting, safe fixes, and import
+organization on explicit save. The extension uses the workspace configuration;
+vendored sources and installed skills are excluded from Biome processing.
 
-This is the reason ExecutionEnv can support Python, R, Rust, CLI tools, or future computation without raw Node APIs leaking into the architecture.
+Effect diagnostics and ordinary typechecking are separate checks; one passing
+does not prove the other passes. The fast feedback command runs both, alongside
+boundary checks, lint, and tests. The full command also builds both workspaces.
+The default editor build task runs fast feedback; the full verification task
+runs the completion checks. AGENTS.md owns when to run these commands. Lint
+warnings fail the feedback loop. Root lint also checks editor and
+compiler configuration, so configuration changes enter the same feedback loop.
 
-## Runners
-
-Keep `NodeRuntime.runMain` at the outer process boundary.
-
-Normal application modules return Effects.
-
-## Errors
-
-Expected failures use typed errors, usually `Schema.TaggedError`.
-
-Do not swallow failures to simplify types.
-
-## Layers
-
-Construct long-lived Layers once at the composition root.
-
-Do not build production Layers inside agent/domain programs.
-
-## Verified bootstrap compatibility (2026-10-05)
-
-Installed Effect, platform-node, sql-sqlite-node, and vitest integration are
-exactly 4.0.0. TypeScript 7.0.2 is patched by @effect/tsgo 0.48.0 through
-`npm run prepare`; VS Code must use the TypeScript 7 extension and workspace SDK.
-Backend diagnostics include every `apps/biojev/**/*.ts` file. The CLI diagnostics
-command checks Effect rules; `npm run typecheck` also checks ordinary TS errors.
-
-Verified in installed source:
-- `Context.Service` and `Schema.TaggedError` remain the service/error conventions.
-- `Config.String` / `Config.Port` and `Schema.Literals([...])` are v4 spellings.
-- `NodeRuntime.runMain` runs the outer scoped server program.
-- `effect/FileSystem` and `effect/Path` provide portable filesystem/path services.
-- `effect/http` provides HttpClient; NodeHttpClient.layer supplies Node transport.
-- `effect/process` provides ChildProcess and ChildProcessSpawner.
-- NodeServices.layer supplies filesystem, path, process spawning, crypto, stdio,
-  and terminal; it does not supply HttpClient.
-- SqliteClient.layer in @effect/sql-sqlite-node supplies the SQLite client and
-  generic `effect/sql/SqlClient`, with scoped database lifetime. No database
-  schema or database initialization is part of bootstrap.
-
-The minimal status HTTP path uses these unstable exports, pinned to Effect 4.0.0:
-- `effect/http/HttpRouter#add` in `http/status.ts`;
-- `effect/http/HttpServerResponse#json` in `http/status.ts`;
-- `effect/http/HttpRouter#serve` in `main.ts` and `test/status.test.ts`;
-- `effect/http/HttpClient#HttpClient` in `test/status.test.ts` only.
-
-The tsgo configuration allowlists only these exports in those files. All other
-unstable and experimental API diagnostics remain errors. Recheck these APIs
-against installed source before upgrading. Node's createServer is isolated in
-`platform/HttpLive.ts` as the constructor required by NodeHttpServer.layerConfig;
-Effect owns serving and resource cleanup.
+Linux computation tests require Bubblewrap with disable-userns support, prlimit,
+Python 3, and Slirp with userns-path support. They exercise actual isolation and
+fail if the required host capabilities are absent. The network binary defaults
+to /usr/bin/slirp4netns; BIOJEV_SLIRP_BINARY and
+BIOJEV_SLIRP_LIBRARY_DIRECTORY configure an unpacked local installation.
+Root tests and backend development load optional ignored root .env and then
+.env.local using
+Node's native env-file support. No dotenv dependency or global tool configuration
+is required. Editor type/lint diagnostics do not require those runtime tools.

@@ -31,14 +31,27 @@ for (const file of await walk(backend)) {
     imports.push(match[1] ?? match[2])
   }
 
-  const isAgentRuntime = rel.startsWith("apps/biojev/agent-runtime/")
+  const isPiIntegration = rel.startsWith("apps/biojev/platform/pi/")
   const isJevEngine = rel.startsWith("apps/biojev/jevengine/")
   const isConfig = rel.startsWith("apps/biojev/config/")
   const isPlatform = rel.startsWith("apps/biojev/platform/")
-  const isExecutionEnv = rel.startsWith("apps/biojev/execution-env/")
+  const isExecutionEnv = rel.startsWith(
+    "apps/biojev/platform/pi/execution-env/",
+  )
   const isBioLab = rel.startsWith("apps/biojev/biolab/")
 
   for (const specifier of imports) {
+    if (
+      (specifier.startsWith("effect/sql") ||
+        specifier.startsWith("@effect/sql-")) &&
+      !(isBioLab || isPlatform)
+    ) {
+      errors.push(`${rel}: SQL imports belong in biolab/** or platform/**.`)
+    }
+    if (/(^|\/)repos\//.test(specifier)) {
+      errors.push(`${rel}: reference subtrees are not production dependencies.`)
+    }
+
     if (
       specifier === "node:fs" ||
       specifier.startsWith("node:fs/") ||
@@ -57,9 +70,9 @@ for (const file of await walk(backend)) {
       specifier === "@earendil-works/chord" ||
       specifier.startsWith("@earendil-works/chord/")
     ) {
-      if (!isAgentRuntime) {
+      if (!isPiIntegration) {
         errors.push(
-          `${rel}: Pi/Chord imports are only allowed in agent-runtime/**.`,
+          `${rel}: Pi/Chord imports are only allowed in platform/pi/**.`,
         )
       }
     }
@@ -79,9 +92,9 @@ for (const file of await walk(backend)) {
       specifier === "effect/process/ChildProcess" ||
       specifier === "effect/process/ChildProcessSpawner"
     ) {
-      if (!(isExecutionEnv || isPlatform)) {
+      if (!isExecutionEnv && rel !== "apps/biojev/platform/ownership.ts") {
         errors.push(
-          `${rel}: process execution belongs in execution-env/** or platform/**.`,
+          `${rel}: agent process execution belongs in platform/pi/execution-env/**.`,
         )
       }
     }
@@ -100,6 +113,18 @@ for (const file of await walk(backend)) {
   ) {
     errors.push(
       `${rel}: Effect runners belong at outer runtime boundaries, not application programs.`,
+    )
+  }
+
+  if (
+    source.includes("Effect.runPromiseWith(") &&
+    rel !== "apps/biojev/main.ts" &&
+    rel !== "apps/biojev/platform/pi/execution-env/Linux.ts" &&
+    rel !== "apps/biojev/platform/pi/tools.ts" &&
+    rel !== "apps/biojev/jevengine/TypeSafeLive.ts"
+  ) {
+    errors.push(
+      `${rel}: Context runners belong only at documented foreign runtime boundaries.`,
     )
   }
 

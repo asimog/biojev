@@ -12,12 +12,12 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "check:effect": "npx @effect/tsgo diagnostics --project apps/biojev/tsconfig.json",
     "check:boundaries": "node tooling/check-boundaries.mjs",
-    "lint": "biome check apps tooling",
-    "format": "biome format --write apps tooling",
-    "test": "vitest run",
-    "check:fast": "npm run check:effect && npm run check:boundaries && npm run lint && npm test",
+    "lint": "biome check apps tooling .vscode biome.json package.json tsconfig.base.json vitest.config.ts --error-on-warnings",
+    "format": "biome format --write apps tooling .vscode biome.json package.json tsconfig.base.json vitest.config.ts",
+    "test": "node --env-file-if-exists=.env --env-file-if-exists=.env.local node_modules/vitest/vitest.mjs run",
+    "check:fast": "npm run typecheck && npm run check:effect && npm run check:boundaries && npm run lint && npm test",
     "build": "npm run build --workspaces --if-present",
-    "check": "npm run check:fast && npm run typecheck && npm run build",
+    "check": "npm run check:fast && npm run build",
     "prepare": "effect-tsgo patch --typescript --no-oxlint"
   },
   "devDependencies": {
@@ -25,6 +25,7 @@
     "@effect/tsgo": "0.48.0",
     "@effect/vitest": "4.0.0",
     "@types/node": "24.19.1",
+    "effect": "4.0.0",
     "typescript": "7.0.2",
     "vitest": "5.0.3"
   }

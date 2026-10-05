@@ -1,0 +1,75 @@
+import type {
+  DirectorDecision,
+  ResearchDossier,
+  ValidationReport,
+} from "../agents/contracts.ts"
+
+export const decision = (
+  id: string,
+  missionId: string,
+  reportId?: string,
+): DirectorDecision => ({
+  decisionId: id,
+  missionId,
+  strategicSummary: "Investigate another open computational question",
+  basisRefs:
+    reportId === undefined ? [] : [{ kind: "ValidationReport", id: reportId }],
+  importantChanges: [],
+  importantUncertainties: [],
+  hypothesisActions: [],
+  capabilityActions: [],
+  ...(reportId === undefined ? {} : { basisValidationReportId: reportId }),
+  nextObjective: {
+    objectiveId: `${id}-objective`,
+    missionId,
+    originDirectorDecisionId: id,
+    statement: "Find a useful representation for the current problem",
+    whyNow: "Prior work leaves this unresolved",
+    relevantRefs: [],
+    knownUncertainties: [],
+    knownFailures: [],
+    suggestedDirections: [],
+    constraints: [],
+  },
+})
+export const dossier = (
+  blockId: string,
+  objectiveId: string,
+): ResearchDossier => ({
+  dossierId: `${blockId}-dossier`,
+  blockId,
+  objectiveId,
+  summary: "No obtained results in this investigation",
+  scientificResultRefs: [],
+  resultAssessmentRefs: [],
+  interpretationRefs: [],
+  hypothesisRefs: [],
+  hypothesisChanges: [],
+  semanticMeasurementRefs: [],
+  capabilityRefs: [],
+  capabilityChanges: [],
+  failureRefs: [],
+  uncertainties: ["Question remains open"],
+  contradictions: [],
+  openQuestions: ["Another method may help"],
+  suggestedNextDirections: [],
+})
+export const report = (
+  cycleId: string,
+  blockIds: ReadonlyArray<string>,
+): ValidationReport => ({
+  reportId: `${cycleId}-report`,
+  cycleId,
+  blockRefs: blockIds.map((id) => ({ kind: "ResearchBlock", id })),
+  summary: "Independent trajectory critique",
+  resultFindings: [],
+  reproductionFindings: [],
+  methodologicalConcerns: [],
+  missedOpportunities: ["Try a different representation"],
+  hypothesisFindings: [],
+  capabilityFindings: [],
+  memoryFindings: [],
+  jevFindings: [],
+  recommendations: ["Broaden the next objective"],
+  importantRefs: [],
+})

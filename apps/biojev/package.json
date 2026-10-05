@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --experimental-strip-types main.ts",
+    "dev": "node --env-file-if-exists=../../.env --env-file-if-exists=../../.env.local --experimental-strip-types main.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "build": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run"
