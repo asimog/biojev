@@ -140,13 +140,31 @@ it.effect(
             originRunId: actor.runId,
           }
           const h1 = yield* lab.recordHypothesisRevision(actor, hypothesis)
-          yield* rejected(
+          const staleRevision = yield* rejected(
             lab.recordHypothesisRevision(actor, {
               ...hypothesis,
               revisionId: "h2",
               basisRefs: [],
             }),
           )
+          assert.match(String(staleRevision), /HypothesisRevision.*h1/)
+          yield* lab.createMission({
+            missionId: "other",
+            statement: "Independent institution",
+          })
+          const other = yield* lab.beginRun({
+            ...identity,
+            missionId: "other",
+            runId: "other-run",
+            conversationId: "other-conversation",
+            environmentId: "other-env",
+          })
+          yield* lab.recordHypothesisRevision(other.actor, {
+            ...hypothesis,
+            revisionId: "other-h1",
+            originRunId: "other-run",
+            basisRefs: [],
+          })
           const h2 = yield* lab.recordHypothesisRevision(actor, {
             ...hypothesis,
             revisionId: "h2",

@@ -587,7 +587,7 @@ export const makeRecording = (
           if (record.kind === "HypothesisRevision") {
             const previous = yield* sql<{
               id: string
-            }>`SELECT id FROM records WHERE kind = 'HypothesisRevision' AND json_extract(body, '$.record.value.hypothesisId') = ${record.value.hypothesisId} ORDER BY rowid DESC LIMIT 1`
+            }>`SELECT id FROM records WHERE kind = 'HypothesisRevision' AND missionId = ${run.missionId} AND json_extract(body, '$.record.value.hypothesisId') = ${record.value.hypothesisId} ORDER BY rowid DESC LIMIT 1`
             if (
               previous.length > 0 &&
               !record.value.basisRefs.some(
@@ -599,7 +599,7 @@ export const makeRecording = (
               return yield* failure(
                 "CONFLICT",
                 "retainScience",
-                "Hypothesis revision must retain its previous basis",
+                `Hypothesis revision must cite the latest revision in basisRefs: ${JSON.stringify({ kind: "HypothesisRevision", id: previous[0].id })}`,
               )
           }
         }
