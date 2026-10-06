@@ -114,6 +114,7 @@ export const makeMissionRoutes = (
     return {
       lifecycle: yield* lab.getLifecycle(missionId),
       genesis: yield* lab.getGenesis(missionId),
+      validationHistory: yield* lab.getValidationCycles(missionId),
       blocks: (yield* lab.getResearchBlocks(missionId)).slice(-50),
       activity: yield* activity(missionId).pipe(
         Effect.mapError(

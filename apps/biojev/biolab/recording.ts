@@ -574,9 +574,19 @@ export const makeRecording = (
   })
   const searchMemory = Effect.fn("BioLab.searchMemory")(
     function* (missionId: string, text: string) {
+      yield* getMission(missionId)
+      const terms = [
+        ...new Set(text.toLowerCase().match(/[\p{L}\p{N}_:-]+/gu) ?? []),
+      ].slice(0, 32)
+      const score =
+        terms.length === 0
+          ? sql.literal("0")
+          : sql.join(" + ")(
+              terms.map((term) => sql`(instr(lower(body), ${term}) > 0)`),
+            )
       const rows = yield* sql<{
         body: string
-      }>`SELECT body FROM records WHERE missionId = ${missionId} AND instr(lower(body), lower(${text})) > 0 ORDER BY rowid DESC LIMIT 100`
+      }>`SELECT body, ${score} AS relevance FROM records WHERE missionId = ${missionId} AND ${terms.length === 0 ? sql.literal("1 = 1") : sql.or(terms.map((term) => sql`instr(lower(body), ${term}) > 0`))} ORDER BY relevance DESC, rowid DESC LIMIT 100`
       return yield* Effect.forEach(rows, (row) =>
         decode(Schema.fromJsonString(RetainedRecord), row.body),
       )

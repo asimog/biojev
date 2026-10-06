@@ -14,7 +14,6 @@ import {
 } from "../../agents/contracts.ts"
 import { BioLab, BioLabError } from "../../biolab/BioLab.ts"
 import {
-  CanonicalRef,
   CapabilityAssessment,
   CapabilityVersion,
   Failure,
@@ -24,7 +23,12 @@ import {
   ScientificResult,
   Uncertainty,
 } from "../../biolab/model/Domain.ts"
+import type { GenesisSnapshot } from "../../biolab/model/Genesis.ts"
 import { CapabilitySelection } from "../../biolab/model/Learning.ts"
+import type {
+  ResearchBlock,
+  ValidationCycle,
+} from "../../biolab/model/Lifecycle.ts"
 import type {
   ActorAuthority,
   ExecutionAuthority,
@@ -115,21 +119,113 @@ export const makeBioLabTools = Effect.fn("Pi.makeBioLabTools")(
     const search = defineTool({
       name: "search_memory",
       description:
-        "Search retained institutional memory for this mission, including negative and orphan outcomes.",
+        "Search this mission’s retained records by words, ranked by matched-word count then recency (up to 100). Matching is lexical, not semantic; an empty page does not prove absent history. Empty text lists recent records. Use browse_memory for complete cursor-paginated history and exact returned kind/id references.",
       parameters: Type.Object({ text: Type.String() }),
       replay: "safe",
       execute: ({ text }, api, context) =>
         emit(lab.searchMemory(actor.missionId, text), api, context),
     })
+    const browse = defineTool({
+      name: "browse_memory",
+      description:
+        "Browse canonical mission history without guessing search terms. Pass the returned next cursor as after until next is null. Use record.kind and id exactly with read_record.",
+      parameters: Type.Object({
+        after: Type.Optional(Type.Integer({ minimum: 0 })),
+        limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 100 })),
+      }),
+      replay: "safe",
+      execute: ({ after, limit }, api, context) =>
+        emit(lab.getHistory(actor.missionId, after, limit), api, context),
+    })
+    const readableRef = Schema.Struct({
+      kind: Schema.Literals([
+        "ScientificResult",
+        "Interpretation",
+        "HypothesisRevision",
+        "ResultAssessment",
+        "Failure",
+        "Uncertainty",
+        "SemanticMeasurement",
+        "CapabilityVersion",
+        "CapabilityAssessment",
+        "CapabilitySelection",
+        "DirectorDecision",
+        "ResearchObjective",
+        "ResearchDossier",
+        "ValidationReport",
+        "DiscoveredSource",
+        "DiscoveredCapability",
+        "Artifact",
+        "ResearchBlock",
+        "ValidationCycle",
+        "GenesisSnapshot",
+      ]),
+      id: Schema.NonEmptyString,
+    })
     const read = defineTool({
       name: "read_record",
-      description: "Retrieve an immutable institutional record by kind and id.",
-      parameters: Type.Object({ kind: Type.String(), id: Type.String() }),
+      description:
+        "Retrieve a canonical record by the exact supported kind/id returned by tools or handoff context. ResearchDossier is the dossier kind. Artifact reads return authorized metadata; use restore_artifact to retrieve file bytes. Missing records do not prove all prior work is absent.",
+      parameters: Type.Unsafe<typeof readableRef.Type>(
+        Schema.toJsonSchemaDocument(readableRef).schema,
+      ),
       replay: "safe",
       execute: (args, api, context) =>
         emit(
-          Schema.decodeEffect(CanonicalRef)(args).pipe(
+          Schema.decodeEffect(readableRef)(args).pipe(
             Effect.flatMap((ref): Effect.Effect<unknown, BioLabError> => {
+              if (ref.kind === "Artifact")
+                return lab.getArtifact(input.actor, ref.id).pipe(
+                  Effect.map((value) => ({
+                    ref,
+                    value,
+                    retrieval: "Use restore_artifact for file bytes",
+                  })),
+                )
+              if (
+                ref.kind === "ResearchBlock" ||
+                ref.kind === "ValidationCycle" ||
+                ref.kind === "GenesisSnapshot"
+              ) {
+                const records: Effect.Effect<
+                  ReadonlyArray<
+                    ResearchBlock | ValidationCycle | GenesisSnapshot
+                  >,
+                  BioLabError
+                > = ref.kind === "ResearchBlock"
+                  ? lab.getResearchBlocks(actor.missionId)
+                  : ref.kind === "ValidationCycle"
+                    ? lab.getValidationCycles(actor.missionId)
+                    : lab
+                        .getGenesis(actor.missionId)
+                        .pipe(
+                          Effect.map((value) =>
+                            value === null ? [] : [value],
+                          ),
+                        )
+                return records.pipe(
+                  Effect.flatMap((values) => {
+                    const value = values.find(
+                      (value) =>
+                        ("blockId" in value
+                          ? value.blockId
+                          : "cycleId" in value
+                            ? value.cycleId
+                            : value.genesisId) === ref.id,
+                    )
+                    return value === undefined
+                      ? Effect.fail(
+                          new BioLabError({
+                            code: "NOT_FOUND",
+                            operation: "read_record",
+                            message:
+                              "Canonical lifecycle reference was not found for this mission",
+                          }),
+                        )
+                      : Effect.succeed({ ref, value })
+                  }),
+                )
+              }
               if (
                 ref.kind === "DiscoveredSource" ||
                 ref.kind === "DiscoveredCapability"
@@ -545,6 +641,7 @@ export const makeBioLabTools = Effect.fn("Pi.makeBioLabTools")(
       name: `biolab-${actor.runId}`,
       tools: [
         search,
+        browse,
         searchDiscovery,
         inspectDiscoveryMeasurement,
         read,

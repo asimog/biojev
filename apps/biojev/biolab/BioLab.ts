@@ -207,6 +207,9 @@ export class BioLab extends Context.Service<
       input: GenesisDiscovery,
       phase?: "DISCOVERING",
     ) => Effect.Effect<GenesisSnapshot, BioLabError>
+    readonly getValidationCycles: (
+      missionId: string,
+    ) => Effect.Effect<ReadonlyArray<ValidationCycle>, BioLabError>
     readonly getLifecycle: (
       missionId: string,
     ) => Effect.Effect<Lifecycle, BioLabError>

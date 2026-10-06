@@ -505,3 +505,29 @@ canonical evidence and material agent retrieval/reasoning errors. This verifies
 the live lifecycle, not scientific effectiveness: repeated probes and unsupported
 interpretations remain visible. BIOJEV_BLOCK_TIMEOUT_MS configures role limits;
 the default remains ten minutes and this run used 300000.
+
+## Fast retrieval and handoff regression qualification
+
+The imported-Pi mission fixture now exercises Genesis (initialization, not a
+countable block), 10 ResearchBlocks, Validator and Director review, 10 more blocks,
+a second Validator and review, and 5 more blocks. It proves 25 settled countable
+blocks, two exact reviewed windows and five blocks in the current window. The
+first cycle also preserves injected Validator/Director failure-and-retry checks.
+
+Director receives the latest settled dossier and uses its summary/reference in
+the next decision. Validator receives the window’s dossiers. The fixture reads
+real artifacts and ResearchBlocks through Pi tools, exercises memory browsing,
+and verifies both reviewed cycles over HTTP after stop. Multi-word memory search
+has a focused SQLite regression. Strict record-kind validation prevents guessed
+aliases from becoming misleading not-found responses.
+
+This is deterministic integration testing, not another paid scientific mission.
+Imported Pi, separate real SQLite stores, and actual controlled computation are
+used. Role deadlines are five-second caps, with no artificial per-block waits;
+the targeted 25-block test completed in about 2.75 seconds on this host.
+
+Run it with:
+
+```bash
+node --env-file-if-exists=.env --env-file-if-exists=.env.local node_modules/vitest/vitest.mjs run apps/biojev/platform/pi/mission.test.ts -t 'fast 25-block' --reporter=verbose
+```

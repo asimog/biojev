@@ -47,6 +47,31 @@ import { acquireRolePrograms } from "./roles.ts"
 
 const Input = Schema.Struct({
   runId: Schema.String,
+  blockId: Schema.optionalKey(Schema.NullOr(Schema.String)),
+  researchHandoff: Schema.optionalKey(
+    Schema.Struct({
+      ref: CanonicalRef,
+      dossier: Schema.Struct({
+        id: Schema.String,
+        originRunId: Schema.String,
+        record: Schema.Struct({
+          kind: Schema.Literal("ResearchDossier"),
+          value: Schema.Struct({ summary: Schema.String }),
+        }),
+      }),
+    }),
+  ),
+  trajectory: Schema.optionalKey(
+    Schema.Array(
+      Schema.Struct({
+        dossier: Schema.optionalKey(
+          Schema.Struct({
+            record: Schema.Struct({ kind: Schema.Literal("ResearchDossier") }),
+          }),
+        ),
+      }),
+    ),
+  ),
   role: Schema.Literals(["director", "researcher", "validator"]),
   mission: Schema.Struct({ missionId: Schema.String }),
   genesis: Schema.optionalKey(
@@ -128,7 +153,7 @@ it.live(
 )
 
 it.live(
-  "runs a real ten-block Pi/BioLab lifecycle, a fresh Validator, explicit Director review and the next Researcher",
+  "runs a fast 25-block Pi/BioLab lifecycle with Researcher handoffs and two reviewed validation windows",
   () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
@@ -142,7 +167,7 @@ it.live(
       let failedReview = false
       let validationAttempts = 0
       faux.setResponses(
-        Array.from({ length: 45 }, () => (context) => {
+        Array.from({ length: 150 }, () => (context) => {
           const user = context.messages
             .filter((message) => message.role === "user")
             .at(-1)
@@ -152,6 +177,11 @@ it.live(
             user.content,
           )
           if (input.role === "director") {
+            if (computedRuns.size > 0)
+              assert.equal(
+                input.researchHandoff?.dossier.record.kind,
+                "ResearchDossier",
+              )
             assert.isTrue(
               input.genesis?.status === "DIRECTOR_RUNNING" ||
                 input.genesis?.status === "COMPLETED",
@@ -176,6 +206,20 @@ it.live(
               nextObjective,
               ...payload
             } = chosen
+            if (input.researchHandoff) {
+              assert.equal(
+                input.researchHandoff.dossier.originRunId,
+                [...computedRuns.keys()].at(-1),
+              )
+              assert.equal(
+                input.researchHandoff.ref.id,
+                input.researchHandoff.dossier.id,
+              )
+              payload.basisRefs = [
+                ...payload.basisRefs,
+                input.researchHandoff.ref,
+              ]
+            }
             const {
               objectiveId: _objective,
               missionId: _objectiveMission,
@@ -185,7 +229,12 @@ it.live(
             return fauxAssistantMessage(
               fauxToolCall("submit_handoff", {
                 ...payload,
-                nextObjective: objective,
+                nextObjective: {
+                  ...objective,
+                  statement: input.researchHandoff
+                    ? `Follow up on: ${input.researchHandoff.dossier.record.value.summary}`
+                    : objective.statement,
+                },
               }),
               { stopReason: "toolUse" },
             )
@@ -197,8 +246,16 @@ it.live(
             const results = context.messages.filter(
               (message) => message.role === "toolResult",
             )
-            for (const result of results)
-              assert.isFalse(result.isError, JSON.stringify(result))
+            for (const result of results) {
+              if (result.toolCallId === "invalid-reference-kind") {
+                assert.isTrue(result.isError)
+                const text = result.content
+                  .map((part) => (part.type === "text" ? part.text : ""))
+                  .join("")
+                assert.include(text, "Dossier")
+                assert.notInclude(text, "Canonical record not found")
+              } else assert.isFalse(result.isError, JSON.stringify(result))
+            }
             const output = (name: string) => {
               const result = results.find(
                 (message) =>
@@ -260,6 +317,43 @@ it.live(
                   },
                 })
               }
+              if (!has("browse_memory"))
+                return call("browse_memory", { limit: 1 })
+              const page = Schema.decodeSync(
+                Schema.fromJsonString(HistoryView),
+              )(output("browse_memory"))
+              assert.lengthOf(page.records, 1)
+              assert.isNotNull(page.next)
+              if (!has("read_record"))
+                return fauxAssistantMessage(
+                  [
+                    fauxToolCall(
+                      "read_record",
+                      Schema.decodeSync(Schema.fromJsonString(CanonicalRef))(
+                        output("retain_artifact"),
+                      ),
+                    ),
+                    fauxToolCall("read_record", {
+                      kind: "ResearchBlock",
+                      id: input.blockId ?? "missing",
+                    }),
+                  ],
+                  { stopReason: "toolUse" },
+                )
+              if (
+                variant === 1 &&
+                !results.some(
+                  (result) => result.toolCallId === "invalid-reference-kind",
+                )
+              )
+                return fauxAssistantMessage(
+                  fauxToolCall(
+                    "read_record",
+                    { kind: "Dossier", id: input.blockId ?? "missing" },
+                    { id: "invalid-reference-kind" },
+                  ),
+                  { stopReason: "toolUse" },
+                )
               if (
                 variant === 0 &&
                 results.filter(
@@ -310,6 +404,12 @@ it.live(
                   : "No obtained results in this investigation",
             })
           }
+          assert.lengthOf(input.trajectory ?? [], 10)
+          assert.isTrue(
+            input.trajectory?.every(
+              (block) => block.dossier?.record.kind === "ResearchDossier",
+            ),
+          )
           if (validationAttempts++ === 0)
             return fauxAssistantMessage(
               "Validation interrupted before a report could be retained.",
@@ -331,6 +431,7 @@ it.live(
           const roles = yield* acquireRolePrograms({
             database: path.join(directory, "pi.sqlite"),
             models,
+            blockTimeoutMs: 5000,
             model: { provider: "faux", modelId: "faux-1" },
             environment: {
               nodeBinary: process.execPath,
@@ -411,6 +512,10 @@ it.live(
           }
           const due = yield* lab.getLifecycle("mission")
           assert.isTrue(due.validationDue)
+          assert.isTrue(
+            (yield* Effect.exit(roles.researcher("mission")))._tag ===
+              "Failure",
+          )
           assert.equal(due.countableBlocks, 10)
           assert.equal(
             yield* advanceMission("mission", programs),
@@ -442,6 +547,10 @@ it.live(
           const pending = yield* lab.getLifecycle("mission")
           assert.isTrue(pending.validationCompletedAwaitingDirectorReview)
           assert.isFalse(pending.objectiveReady)
+          assert.isTrue(
+            (yield* Effect.exit(roles.researcher("mission")))._tag ===
+              "Failure",
+          )
           assert.equal(
             yield* advanceMission("mission", programs),
             "RUN_DIRECTOR",
@@ -462,8 +571,49 @@ it.live(
             yield* advanceMission("mission", programs),
             "RUN_RESEARCHER",
           )
+          for (let number = 12; number <= 25; number++) {
+            if (number === 21) {
+              assert.equal(
+                yield* advanceMission("mission", programs),
+                "RUN_VALIDATOR",
+              )
+              assert.isTrue(
+                (yield* lab.getLifecycle("mission"))
+                  .validationCompletedAwaitingDirectorReview,
+              )
+            }
+            assert.equal(
+              yield* advanceMission("mission", programs),
+              "RUN_DIRECTOR",
+            )
+            assert.equal(
+              yield* advanceMission("mission", programs),
+              "RUN_RESEARCHER",
+            )
+          }
+          const cycles = yield* lab.getValidationCycles("mission")
+          assert.lengthOf(cycles, 2)
+          assert.isTrue(
+            cycles.every(
+              (cycle) =>
+                cycle.status === "REVIEWED" &&
+                cycle.reportId &&
+                cycle.decisionId &&
+                cycle.blockIds.length === 10,
+            ),
+          )
           const blocks = yield* lab.getResearchBlocks("mission")
-          assert.lengthOf(blocks, 11)
+          assert.lengthOf(blocks, 25)
+          for (let index = 0; index < 2; index++)
+            assert.deepEqual(
+              cycles[index].blockIds,
+              blocks
+                .slice(index * 10, index * 10 + 10)
+                .map((block) => block.blockId),
+            )
+          assert.isTrue(
+            blocks.every((block) => block.deadline - block.startedAt <= 5000),
+          )
           assert.isTrue(
             blocks.every(
               (block) =>
@@ -471,7 +621,7 @@ it.live(
                 block.classification === "COUNTABLE",
             ),
           )
-          assert.equal((yield* lab.getLifecycle("mission")).countableBlocks, 1)
+          assert.equal((yield* lab.getLifecycle("mission")).countableBlocks, 5)
           assert.equal(
             blocks.filter((block) => block.status === "COMPLETED").length,
             2,
@@ -487,9 +637,9 @@ it.live(
           )
           assert.equal(
             new Set(researchers.map((run) => run.conversationId)).size,
-            11,
+            25,
           )
-          assert.lengthOf(validators, 2)
+          assert.lengthOf(validators, 3)
           assert.notEqual(
             validators[0].conversationId,
             validators[1].conversationId,
@@ -516,6 +666,25 @@ it.live(
           )
           yield* lab.setMissionStatus("mission", "STOPPED")
           assert.equal(yield* advanceMission("mission", programs), "STOP")
+          const commands = yield* acquireMissionLoop(programs, false)
+          const server = HttpRouter.serve(
+            makeMissionRoutes(lab, commands, roles.activity),
+            { disableListenLog: true },
+          ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
+          yield* Effect.gen(function* () {
+            const client = yield* HttpClient.HttpClient
+            const response = yield* client.get("/api/missions/mission")
+            const snapshot = yield* Schema.decodeUnknownEffect(
+              MissionSnapshotView,
+            )(yield* response.json)
+            assert.lengthOf(snapshot.validationHistory, 2)
+            assert.isTrue(
+              snapshot.validationHistory.every(
+                (cycle) => cycle.status === "REVIEWED",
+              ),
+            )
+            assert.equal(snapshot.lifecycle.countableBlocks, 5)
+          }).pipe(Effect.provide(server))
         }).pipe(
           Effect.provide(BioLabLive(path.join(directory, "biojev.sqlite"))),
         ),

@@ -726,6 +726,19 @@ export const makeLifecycle = (
     recordGenesisDiscovery: (input: GenesisDiscovery, phase?: "DISCOVERING") =>
       recordGenesisDiscovery(input, false, phase),
     getLifecycle,
+    getValidationCycles: (missionId: string) =>
+      cycles(missionId).pipe(
+        Effect.catchTag(
+          "SqlError",
+          (cause) =>
+            new BioLabError({
+              code: "STORAGE",
+              operation: "getValidationCycles",
+              message: "Validation history could not be read",
+              cause,
+            }),
+        ),
+      ),
     getRuns,
     setMissionStatus,
     recordDirectorDecision,

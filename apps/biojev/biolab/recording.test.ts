@@ -241,6 +241,12 @@ it.effect(
               "critique",
             ],
           )
+          assert.isTrue(
+            (yield* lab.searchMemory(
+              "mission",
+              "replication negative scientific result",
+            )).some((record) => record.id === "negative"),
+          )
           assert.equal((yield* lab.getRun("research-1")).status, "SETTLED")
         }).pipe(Effect.provide(BioLabLive(database))),
       )

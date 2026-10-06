@@ -26,6 +26,7 @@ export const MissionSnapshotView = Schema.Struct({
     countableBlocks: Schema.Int,
   }),
   genesis: Schema.NullOr(GenesisSnapshot),
+  validationHistory: Schema.Array(ValidationCycle),
   blocks: Schema.Array(ResearchBlock),
   activity: Schema.Array(
     Schema.Struct({

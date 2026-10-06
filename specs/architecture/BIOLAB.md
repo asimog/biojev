@@ -124,3 +124,21 @@ agent write tools. Snapshot references avoid duplicating candidate/measurement
 payloads. Genesis measurements attribute the initialization operation, not a
 fourth AgentRun. Normal semantic tools retain their existing actual role run
 attribution. Refresh retains a new attempt while preserving completed Genesis.
+
+## Runtime retrieval contracts
+
+Memory search uses up to 32 distinct query words, matches them lexically, and ranks by matched-word count,
+then recency, with a 100-record limit. It is not semantic judgment or candidate
+pruning. An empty search result does not establish absent history. browse_memory
+uses canonical history cursors to traverse all retained records without guessing
+search terms. Returned kinds and IDs are used exactly.
+
+read_record accepts supported canonical kinds. It reads ordinary retained records,
+mission-scoped ResearchBlocks, ValidationCycles, GenesisSnapshots and discovery
+records through their owning BioLab operations. Artifact reads return authorized
+metadata; restore_artifact retrieves bytes through Pi’s environment. Unsupported
+kinds fail validation instead of masquerading as missing history.
+
+Validation history remains retained and exposed after review. The current-cycle
+lifecycle field still controls admission; historical projections do not authorize
+new work.

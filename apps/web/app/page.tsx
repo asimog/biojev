@@ -325,16 +325,14 @@ export default function Home() {
             {snapshot.lifecycle.validationCompletedAwaitingDirectorReview && (
               <p>Validation awaits Director review.</p>
             )}
-            {snapshot.lifecycle.validation && (
-              <details>
-                <summary>
-                  Validation cycle: {snapshot.lifecycle.validation.status}
-                </summary>
+            {snapshot.validationHistory.map((cycle) => (
+              <details key={cycle.cycleId}>
+                <summary>Validation cycle: {cycle.status}</summary>
                 <pre className="overflow-auto whitespace-pre-wrap text-sm">
-                  {JSON.stringify(snapshot.lifecycle.validation, null, 2)}
+                  {JSON.stringify(cycle, null, 2)}
                 </pre>
               </details>
-            )}
+            ))}
             <h3 className="text-lg font-semibold">Research blocks</h3>
             {snapshot.blocks.length === 0 && (
               <p>No ResearchBlock admitted yet.</p>

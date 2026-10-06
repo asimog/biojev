@@ -89,4 +89,4 @@ Feedback: 43 tests pass, zero Effect diagnostics, boundaries/lint/typechecks pas
 
 Runtime stores, receipts, catalog snapshots, artifacts and logs are under data/live-five-minute-v0 and remain ignored by Git. Credentials were not copied into the report.
 
-Next engineering task: make memory search semantics and canonical handoff references explicit to roles, including artifact retrieval, so Director can learn from existing dossiers without mistaking empty searches for missing history. Preserve scientific freedom and leave history immutable.
+At the time of this run, the next task was to fix memory search and handoff retrieval. That follow-up is now implemented and qualified by the [fast 25-block regression](IMPLEMENTATION_PLAN.md#fast-retrieval-and-handoff-regression-qualification). The live-run history and its errors remain unchanged.

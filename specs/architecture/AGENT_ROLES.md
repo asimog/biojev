@@ -23,6 +23,10 @@ Director asks which investigation is most valuable given the mission and what
 BioJev has learned. It retrieves history itself, assesses results, uncertainties,
 contradictions and capability limitations, and responds to Validator criticism.
 Its institutional rationale is concise and explicit, not hidden chain-of-thought.
+The runtime supplies the latest settled Researcher dossier, its typed reference,
+and block identity as researchHandoff. Director uses that retained work when
+choosing the next objective; its own transcript is not the handoff. Older records
+remain available through lexical search and cursor-paginated memory browsing.
 Director exclusively chooses whether to continue, branch, replicate, revisit,
 defer, or abandon an investigation, and selects qualified capability defaults.
 Shell access supports strategy; it does not make Director the Researcher for
@@ -46,6 +50,9 @@ unfinished block must retain its existing identity rather than count a retry.
 
 ## Validator
 
+Validator receives the exact window’s block identities, typed dossier references,
+and retained dossier bodies. Its report goes to Director before the next window
+can begin.
 Validator critiques search, computation, judgment, memory, capabilities, and Jev
 use across the exact window. It can reproduce work, redownload data, write
 independent implementations, and identify tunnel vision or missed opportunities.

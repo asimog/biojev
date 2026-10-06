@@ -355,3 +355,16 @@ outside the ten countable ResearchBlocks.
 A pause or cancellation does not manufacture a ValidationReport or clear an
 existing validation/review gate. Resume must still complete required validation
 and Director review before another research window can begin.
+
+## Handoff and review observation
+
+After Researcher cleanup and block settlement, the next Director receives the
+latest canonical dossier and typed reference. Validator receives the ten-block
+trajectory with its dossier bodies. A retained ValidationReport goes to Director;
+research remains blocked until its reviewed decision and next objective are
+retained. This applies before both block 11 and block 21.
+
+HTTP snapshots expose validationHistory separately from the current lifecycle
+cycle. Reviewed cycles remain visible when the current validation counter resets.
+The UI displays retained cycle states instead of waiting to catch a transient
+review transition over SSE.
