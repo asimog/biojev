@@ -30,8 +30,9 @@ Genesis separately requires semantic discovery under its initialization contract
 19. UI state and live activity are projections. Browser refresh does not affect research execution.
 20. A mission continues until the human stops it; pause retains active research as an orphan without completing the mission.
 
-21. Genesis initializes a broad searchable map; the existing Director alone chooses its inaugural direction.
+21. The existing Director performs open-ended Genesis discovery and chooses its inaugural direction; block 0 is initialization, not a ResearchBlock.
 22. Genesis is replaceable, source-agnostic, once per Mission, and outside ResearchBlock countability.
+23. Director side work may run alongside Researcher in a separate Pi environment; only the settled handoff selects the next objective, and Validator review remains blocking.
 
 Validator is required for v0. No second agent/workflow runtime, centralized
 Search engine, scientific execution subsystem, mandatory scientific modality/literature/Jev

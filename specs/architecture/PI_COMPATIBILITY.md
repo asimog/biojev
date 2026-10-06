@@ -206,3 +206,18 @@ Genesis invokes this existing persistent Director after BioLab retains a
 sufficient map. It creates no Pi role, conversation implementation, environment
 owner, or extra package. The initialization completeness report enters the
 Director context, and search_discovery exposes retained possibilities.
+
+
+## Pi 1.0.4 integration
+
+Durable, Pi AI and Chord are pinned together at 1.0.4. The ignored reference clone
+is at 28dcce2ba45ce4a9efeb0f5b686f0be830fd89b9. Production imports npm packages.
+The existing Linux adapter supplies binary/directory readers and watchers by
+holding imported NodeExecutionEnv handles inside live isolated workers. Shell
+argv commands and stdout/stderr metadata pass through the transport. Readers
+are closed and workers joined before environment cleanup. The imported upstream
+environment conformance suite is run against this adapter.
+
+The persistent Director owns Genesis discovery and concurrent side work. Each
+side-work run has its own environment and cannot issue the next objective.
+No second runtime, task scheduler, agent loop or execution service is introduced.

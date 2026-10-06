@@ -99,7 +99,7 @@ The current policy has this priority:
 STOP and WAIT never authorize new cognitive work. Cleanup of already owned work
 is a separate lifecycle obligation. The scheduler must not overlap independent
 logical investigations or bypass validation. The pure nextAction policy receives lifecycle facts; it never calls Jev or
-chooses datasets, hypotheses, methods, or representations. Its supplied Genesis
+chooses datasets, hypotheses, methods, or representations. Its Director-led Genesis
 program can call Jev for required discovery measurements without choosing
 scientific strategy.
 
@@ -107,9 +107,8 @@ scientific strategy.
 
 [Genesis](../architecture/GENESIS.md) owns initialization states, replacement,
 partial-failure sufficiency, provenance, and Refresh semantics. The scheduler
-requests its supplied discovery program before the first Director handoff. The
-existing Pi Director searches the persisted map and creates the first decision
-and objective; only then can normal research begin. Genesis and Refresh are
+requests the existing Pi Director for open-ended discovery, BioLab updates and
+inaugural direction in its own environment. No catalog loop is prescribed; only then can normal research begin. Genesis and Refresh are
 excluded from the research count. Recovery precedes a new initialization attempt.
 
 ## Director handoff
@@ -368,3 +367,16 @@ HTTP snapshots expose validationHistory separately from the current lifecycle
 cycle. Reviewed cycles remain visible when the current validation counter resets.
 The UI displays retained cycle states instead of waiting to catch a transient
 review transition over SSE.
+
+
+## Concurrent Director side work
+
+Each production Researcher block also admits one side-work turn of the existing
+persistent Director, with separate run attribution and Pi environment. Director
+may revisit previous results, generate hypotheses, discover tools, verify claims
+and update BioLab using its authorized tools. No scientific action order is
+encoded. Side work ends with an empty submit_handoff and cannot author the next
+objective. Researcher retains local method authority. Both runs are joined and
+cleaned before admitting the next lifecycle action; pause/revision/stop aborts
+both. Recovery reconciles both identities. Validator still runs after exactly
+ten countable Researcher blocks, followed by strategic Director review.

@@ -47,13 +47,13 @@ composition owns scheduling, provider configuration, mission HTTP/SSE, and shutd
 
 Use one root lockfile; npm keeps Pi package files in node_modules. The Pi
 platform folder contains integration only, never copied upstream source or a
-second package installation. Pi is not vendored under repos/pi. Production
+second package installation. The local repos/pi reference clone is Git-ignored and not vendored. Production
 never imports repos/**. Upstream reference
 documentation remains upstream-owned; local specifications govern BioJev.
 Add shared packages only for actual multiple consumers, and introduce an Adapter
 only for real variability at a seam.
 
-Genesis is coordinated in core/genesis.ts with BioLab-owned validated discovery
-records and storage. Concrete discovery is supplied by composition. Source
+Genesis is coordinated by core/mission.ts through the existing Pi Director,
+with BioLab-owned validated discovery records and storage. Production discovery is chosen by the existing Director through authorized tools. Source
 identifiers, catalog metadata, and external abilities stay outside Core policy;
 no permanent source/search/capability subsystem or vendored runtime is introduced.

@@ -12,7 +12,7 @@ import {
   UsageDoc,
 } from "@earendil-works/pi-durable"
 import { CodingTools } from "@earendil-works/pi-durable/tools"
-import { Cause, DateTime, Effect, Exit, Schema } from "effect"
+import { Cause, DateTime, Deferred, Effect, Exit, Fiber, Schema } from "effect"
 import { BioLab } from "../../biolab/BioLab.ts"
 import type { FinishBlock } from "../../biolab/model/Lifecycle.ts"
 import type { ExecutionAuthority } from "../../biolab/model/Recording.ts"
@@ -56,6 +56,7 @@ export const acquireRolePrograms = Effect.fn("Pi.acquireRolePrograms")(
     options: {
       readonly database: string
       readonly environment: LinuxOptions
+      readonly concurrentDirector?: boolean
       readonly blockTimeoutMs?: number
       readonly jev?: JevEngine["Service"]
     } & (
@@ -175,13 +176,28 @@ export const acquireRolePrograms = Effect.fn("Pi.acquireRolePrograms")(
     const runRole = Effect.fn("Pi.runRole")(function* (
       missionId: string,
       role: Role,
+      sideWork = false,
+      started?: Deferred.Deferred<void>,
+      waitForSide?: Deferred.Deferred<void>,
     ) {
       return yield* Effect.scoped(
         Effect.uninterruptibleMask((restore) =>
           Effect.gen(function* () {
             const mission = yield* lab.getMission(missionId)
             const before = yield* lab.getLifecycle(missionId)
-            if (mission.status !== "RUNNING" || before.recoveryRequired)
+            const activeRuns = (yield* lab.getRuns(missionId)).filter(
+              (run) => run.status === "ACTIVE",
+            )
+            const sideAllowed =
+              sideWork &&
+              before.genesisComplete &&
+              activeRuns.some((run) => run.role === "researcher") &&
+              !activeRuns.some((run) => run.role === "director")
+            if (
+              mission.status !== "RUNNING" ||
+              (before.recoveryRequired && !sideAllowed) ||
+              (sideWork && !sideAllowed)
+            )
               return yield* new PiRoleError({
                 role,
                 message: "Mission is not ready for new role work",
@@ -190,6 +206,7 @@ export const acquireRolePrograms = Effect.fn("Pi.acquireRolePrograms")(
               (role === "researcher" && !before.objectiveReady) ||
               (role === "validator" && !before.validationDue) ||
               (role === "director" &&
+                !sideWork &&
                 (!before.directorRequired || before.validationDue))
             )
               return yield* new PiRoleError({
@@ -230,6 +247,7 @@ export const acquireRolePrograms = Effect.fn("Pi.acquireRolePrograms")(
                 runId,
                 missionId,
                 role,
+                ...(sideWork ? { purpose: "DIRECTOR_SIDE_WORK" as const } : {}),
                 conversationId: String(owned.id),
                 environmentId: resource.env.id,
                 ...(blockId === undefined ? {} : { blockId }),
@@ -318,7 +336,11 @@ export const acquireRolePrograms = Effect.fn("Pi.acquireRolePrograms")(
               )
             } else if (role === "validator")
               yield* lab.startValidation(actor.actor)
+            if (started !== undefined)
+              yield* Deferred.succeed(started, undefined)
             initialized = true
+            if (waitForSide !== undefined)
+              yield* restore(Deferred.await(waitForSide))
             extension = yield* makeBioLabTools({
               ...actor,
               environment: resource,
@@ -329,7 +351,13 @@ export const acquireRolePrograms = Effect.fn("Pi.acquireRolePrograms")(
               owned.configure(
                 {
                   model,
-                  instructions: instructions[role],
+                  instructions:
+                    instructions[role] +
+                    (sideWork
+                      ? " This is concurrent Director side work. Review previous results, generate hypotheses, search or verify tools, update BioLab and measure semantics freely. Do not redirect the active Researcher or create its next objective. Finish using submit_handoff with an empty object. Your own environment and deadline apply."
+                      : !before.genesisComplete && role === "director"
+                        ? " This is Genesis (block 0, outside ResearchBlock count). Autonomously discover the scientific landscape using real sources and coding tools. Choose your own search order, pagination and methods. Retain retrieved snapshots, register broad candidates and explicit incomplete sources with record_discovery, then measure semantics and call record_discovery again. Finally choose the first objective with submit_handoff. No configured source catalog is required."
+                        : ""),
                   cwd: "/work",
                   extensions: [CodingTools, extension].filter(
                     (entry) => entry !== undefined,
@@ -349,12 +377,43 @@ export const acquireRolePrograms = Effect.fn("Pi.acquireRolePrograms")(
             const context = {
               mission,
               role,
+              mode: sideWork
+                ? "DIRECTOR_SIDE_WORK"
+                : !before.genesisComplete && role === "director"
+                  ? "GENESIS"
+                  : "ROLE",
               runId,
               blockId,
               timeBudgetMs: timeout,
               deadline: now + timeout,
               handoffGuidance:
                 "Reserve time to submit_handoff before the deadline. A small honest completed investigation or explicit no-results dossier is preferable to unfinished work. Time limits constrain scope, not scientific method.",
+              activeResearchBlocks: sideWork
+                ? priorBlocks
+                    .filter((block) => block.finishedAt === undefined)
+                    .map((block) => ({
+                      ref: { kind: "ResearchBlock", id: block.blockId },
+                      objectiveId: block.objectiveId,
+                      deadline: block.deadline,
+                    }))
+                : [],
+              semanticPatterns: [
+                "consistency checks",
+                "parallel questions",
+                "semantic reranking without discarding candidates",
+                "semantic passage search",
+                "structure recovery",
+                "tool/skill fit",
+                "entity alignment",
+                "passage classification",
+                "citation support",
+                "guardrail assessment",
+                "extraction comparisons",
+                "date/span extraction",
+                "hierarchical classification",
+                "question-derived feature discovery with empirical held-out evaluation",
+                "confidence-aware classification",
+              ],
               lifecycle: before,
               ...(role !== "director" || latestHandoff?.dossierId === undefined
                 ? {}
@@ -443,7 +502,7 @@ export const acquireRolePrograms = Effect.fn("Pi.acquireRolePrograms")(
               reason = Cause.pretty(outcome.cause)
             } else {
               const completion = yield* lab.getRunCompletion(runId)
-              if (completion.handoffRetained) {
+              if (completion.handoffRetained || sideWork) {
                 terminal = completion.hasScientificResults
                   ? "COMPLETED"
                   : "COMPLETED_NO_RESULTS"
@@ -567,7 +626,46 @@ export const acquireRolePrograms = Effect.fn("Pi.acquireRolePrograms")(
     })
     return {
       director: (missionId: string) => runRole(missionId, "director"),
-      researcher: (missionId: string) => runRole(missionId, "researcher"),
+      genesis: Effect.fn("Pi.genesis")(function* (missionId: string) {
+        yield* runRole(missionId, "director")
+        if ((yield* lab.getGenesis(missionId))?.status !== "COMPLETED")
+          return yield* new PiRoleError({
+            role: "director",
+            message:
+              "Genesis requires retained discovery, semantic measurement and inaugural handoff; inspect and explicitly retry",
+          })
+      }),
+      researcher: (missionId: string) =>
+        options.concurrentDirector !== true
+          ? runRole(missionId, "researcher")
+          : Effect.scoped(
+              Effect.gen(function* () {
+                const started = yield* Deferred.make<void>()
+                const sideReady = yield* Deferred.make<void>()
+                const research = yield* runRole(
+                  missionId,
+                  "researcher",
+                  false,
+                  started,
+                  sideReady,
+                ).pipe(Effect.forkScoped)
+                const admitted = yield* Effect.raceFirst(
+                  Deferred.await(started).pipe(Effect.as(true)),
+                  Fiber.join(research).pipe(Effect.as(false)),
+                )
+                if (admitted) {
+                  const side = yield* runRole(
+                    missionId,
+                    "director",
+                    true,
+                    sideReady,
+                  ).pipe(Effect.forkScoped)
+                  yield* Effect.all([Fiber.join(research), Fiber.join(side)], {
+                    concurrency: 2,
+                  })
+                } else yield* Fiber.join(research)
+              }),
+            ),
       validator: (missionId: string) => runRole(missionId, "validator"),
       activity,
     }

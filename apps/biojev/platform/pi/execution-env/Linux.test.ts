@@ -336,3 +336,100 @@ it.live(
     }).pipe(Effect.provide(NodeServices.layer)),
   { timeout: 30000 },
 )
+
+it.live(
+  "reads and retains a 100 MB asset with bounded transport; reader survives rename and separates shell streams",
+  () =>
+    Effect.gen(function* () {
+      const { fs, options } = yield* fixture
+      const resource = yield* acquireLinuxEnvironment(options)
+      const env = resource.env
+      const c = BACKGROUND_CONTEXT
+      const generated = yield* Effect.promise(() =>
+        env.exec(
+          [
+            "python3",
+            "-c",
+            "with open('large.bin','wb') as f: f.truncate(100000000)\nprint('ok')",
+          ],
+          undefined,
+          c,
+        ),
+      )
+      assert.isTrue(generated.ok)
+      const opened = yield* Effect.promise(() =>
+        env.openBinaryReader("large.bin", undefined, c),
+      )
+      assert.isTrue(opened.ok)
+      if (!opened.ok) return
+      yield* Effect.promise(() => env.renameFile("large.bin", "renamed.bin", c))
+      const last = yield* Effect.promise(() =>
+        opened.value.read(99999999, 1, c),
+      )
+      assert.deepEqual(last, { ok: true, value: Uint8Array.of(0) })
+      yield* Effect.promise(() => opened.value.close(c))
+      const artifact = yield* resource.retainArtifact("renamed.bin", c)
+      assert.equal(artifact.bytes, 100000000)
+      assert.equal(Number((yield* fs.stat(artifact.path)).size), 100000000)
+      let stdout = ""
+      let stderr = ""
+      yield* Effect.promise(() =>
+        env.exec(
+          ["sh", "-c", "printf out; printf err >&2"],
+          {
+            onOutput: (text, _context, info) => {
+              if (info.stream === "stdout") stdout += text
+              else stderr += text
+            },
+          },
+          c,
+        ),
+      )
+      assert.equal(stdout, "out")
+      assert.equal(stderr, "err")
+      yield* Effect.promise(() =>
+        env.exec(
+          [
+            "python3",
+            "-c",
+            "with open('oversized.bin','wb') as f: f.truncate(100000001)",
+          ],
+          undefined,
+          c,
+        ),
+      )
+      const refused = yield* Effect.promise(() =>
+        env.readBinaryFile("oversized.bin", c),
+      )
+      assert.isFalse(refused.ok)
+    }).pipe(Effect.provide(NodeServices.layer)),
+  { timeout: 120000 },
+)
+
+it.live(
+  "cancelling a reader wait closes its channel before another request can consume stale data",
+  () =>
+    Effect.gen(function* () {
+      const { options } = yield* fixture
+      const resource = yield* acquireLinuxEnvironment(options)
+      const c = BACKGROUND_CONTEXT
+      yield* Effect.promise(() =>
+        resource.env.writeFile("cancel.txt", "retained bytes", c),
+      )
+      const opened = yield* Effect.promise(() =>
+        resource.env.openBinaryReader("cancel.txt", undefined, c),
+      )
+      assert.isTrue(opened.ok)
+      if (!opened.ok) return
+      const cancellation = withCancel(c)
+      const pending = opened.value.read(0, 12, cancellation.context)
+      cancellation.cancel()
+      const result = yield* Effect.promise(() => pending)
+      assert.isFalse(result.ok)
+      if (!result.ok) assert.equal(result.error.code, "aborted")
+      const subsequent = yield* Effect.promise(() => opened.value.info(c))
+      assert.isFalse(subsequent.ok)
+      if (!subsequent.ok) assert.equal(subsequent.error.code, "invalid")
+    }).pipe(Effect.provide(NodeServices.layer)),
+  { timeout: 15000 },
+)

@@ -21,6 +21,9 @@ export const Method = Schema.Literals([
   "createTempDir",
   "createTempFile",
   "exec",
+  "openBinaryReader",
+  "openDirReader",
+  "watch",
 ])
 
 // Scientific payloads stay open; this validates the private transport envelope.
@@ -28,6 +31,7 @@ export const Request = Schema.Struct({
   method: Method,
   args: Schema.Array(Schema.Unknown),
   cwd: Schema.String,
+  session: Schema.optionalKey(Schema.Boolean),
 })
 
 export const WireError = Schema.Struct({
@@ -37,9 +41,14 @@ export const WireError = Schema.Struct({
 })
 
 export const Message = Schema.Union([
+  Schema.Struct({ kind: Schema.Literal("watch"), change: Schema.Unknown }),
   Schema.Struct({ "child-pid": Schema.Int }),
   Schema.Struct({ "exit-code": Schema.Int }),
-  Schema.Struct({ kind: Schema.Literal("output"), text: Schema.String }),
+  Schema.Struct({
+    kind: Schema.Literal("output"),
+    text: Schema.String,
+    stream: Schema.Literals(["stdout", "stderr"]),
+  }),
   Schema.Struct({
     kind: Schema.Literal("result"),
     result: Schema.Union([

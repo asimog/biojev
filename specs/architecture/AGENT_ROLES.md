@@ -66,11 +66,19 @@ retrieve prior outcomes through institutional records.
 
 ## Genesis integration
 
-The inaugural Director receives the Mission and Genesis completeness report,
-searches BioLab for source and capability possibilities, considers uncertainties
-and gaps, and chooses the first bounded ResearchObjective. Jev can assist its
+The inaugural Director receives the Mission, discovers source and capability
+possibilities, updates BioLab with real snapshots and explicit incomplete inputs,
+considers uncertainties and gaps, and chooses the first bounded ResearchObjective. Jev can assist its
 reasoning. It supplies no mandatory Researcher procedure. The same Director
 continues learning across blocks; its initial choice has no permanent privilege.
 
 [Genesis](GENESIS.md) owns initialization lifecycle, provenance, partial-failure
 policy, and the distinction from later Refresh.
+
+
+The production Director performs Genesis itself: open-ended source/capability
+discovery and authorized BioLab recording before its inaugural objective.
+It also receives one side-work turn alongside each Researcher block in a separate
+Pi environment. Side work may retain assessments, hypotheses and discovery but
+cannot replace the active objective. The normal settled Director handoff and
+Validator review gates still govern the next block. No extra role is created.

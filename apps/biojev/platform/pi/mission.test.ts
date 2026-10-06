@@ -73,6 +73,7 @@ const Input = Schema.Struct({
     ),
   ),
   role: Schema.Literals(["director", "researcher", "validator"]),
+  mode: Schema.optionalKey(Schema.String),
   mission: Schema.Struct({ missionId: Schema.String }),
   genesis: Schema.optionalKey(
     Schema.NullOr(Schema.Struct({ status: Schema.String })),
@@ -167,7 +168,7 @@ it.live(
       let failedReview = false
       let validationAttempts = 0
       faux.setResponses(
-        Array.from({ length: 150 }, () => (context) => {
+        Array.from({ length: 400 }, () => (context) => {
           const user = context.messages
             .filter((message) => message.role === "user")
             .at(-1)
@@ -176,6 +177,27 @@ it.live(
           const input = Schema.decodeSync(Schema.fromJsonString(Input))(
             user.content,
           )
+          if (input.mode === "DIRECTOR_SIDE_WORK") {
+            const last = context.messages.at(-1)
+            if (
+              last?.role === "toolResult" &&
+              last.toolName === "record_learning"
+            )
+              return fauxAssistantMessage(fauxToolCall("submit_handoff", {}), {
+                stopReason: "toolUse",
+              })
+            return fauxAssistantMessage(
+              fauxToolCall("record_learning", {
+                kind: "Interpretation",
+                value: {
+                  statement:
+                    "Director reassessed previous work alongside this block",
+                  basisRefs: [],
+                },
+              }),
+              { stopReason: "toolUse" },
+            )
+          }
           if (input.role === "director") {
             if (computedRuns.size > 0)
               assert.equal(
@@ -429,6 +451,7 @@ it.live(
         Effect.gen(function* () {
           const lab = yield* BioLab
           const roles = yield* acquireRolePrograms({
+            concurrentDirector: true,
             database: path.join(directory, "pi.sqlite"),
             models,
             blockTimeoutMs: 5000,
@@ -509,6 +532,19 @@ it.live(
               yield* advanceMission("mission", programs),
               "RUN_RESEARCHER",
             )
+            if (block === 1) {
+              const blockActivity = yield* Schema.decodeEffect(
+                MissionSnapshotView.fields.activity,
+              )(yield* roles.activity("mission"))
+              assert.isTrue(
+                blockActivity.some((run) =>
+                  run.recentTools?.some(
+                    (tool) =>
+                      tool.name === "bash" && tool.status === "completed",
+                  ),
+                ),
+              )
+            }
           }
           const due = yield* lab.getLifecycle("mission")
           assert.isTrue(due.validationDue)
@@ -535,13 +571,6 @@ it.live(
               (run) =>
                 run.requestedModel?.modelId === "faux-1" &&
                 run.actualModel !== null,
-            ),
-          )
-          assert.isTrue(
-            activity.some((run) =>
-              run.recentTools?.some(
-                (tool) => tool.name === "bash" && tool.status === "completed",
-              ),
             ),
           )
           const pending = yield* lab.getLifecycle("mission")
@@ -627,6 +656,10 @@ it.live(
             2,
           )
           const runs = yield* lab.getRuns("mission")
+          assert.lengthOf(
+            runs.filter((run) => run.purpose === "DIRECTOR_SIDE_WORK"),
+            25,
+          )
           assert.isTrue(runs.every((run) => run.status === "SETTLED"))
           const directors = runs.filter((run) => run.role === "director")
           const researchers = runs.filter((run) => run.role === "researcher")

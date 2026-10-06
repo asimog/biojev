@@ -78,12 +78,18 @@ Tracked Effect and TypeSafe reference subtrees live under repos/; production
 code never imports them. Pi is imported only from installed npm packages; its
 former source subtree has been removed.
 
-Genesis now gates the first investigation through a replaceable discovery
-program, broad BioLab candidates, Jev measurement, and the existing inaugural
-Director. Refresh preserves completed initialization. See
-[Genesis](specs/architecture/GENESIS.md) and the
-[v0 implementation plan](specs/IMPLEMENTATION_PLAN.md) for scope and qualification.
-External catalog ingestion remains deferred. `BIOJEV_GENESIS_CATALOG` selects a
-trusted deployment JSON catalog; source names and scientific abilities are data,
-not application branches. Missing/invalid catalogs park scheduling with an explicit
-failure rather than fabricating discovery. The program can be replaced at composition.
+Genesis is the existing Director’s open-ended initialization turn (block 0,
+outside validation countability). Director chooses sources, retrieves snapshots,
+updates BioLab, measures semantics and chooses the inaugural objective. No
+catalog file or source-specific discovery loop is required. Refresh preserves
+completed initialization. During each Researcher block, Director side work uses
+its own Pi environment to reassess results, generate hypotheses and discover or
+verify tools; it cannot replace the active objective or bypass Validator review.
+
+Pi Durable, Pi AI and Chord are pinned to 1.0.4. The isolated adapter supports
+bounded transfers up to 100 MB per asset or repository archive. Extracted
+repository aggregate size remains outside that per-asset limit. Optional
+[TypeSafe cookbook patterns](specs/guides/JEV_COOKBOOKS.md) are available through
+general semantic tools, native batches and deterministic semantic feature columns.
+See [Genesis](specs/architecture/GENESIS.md) and the
+[v0 implementation plan](specs/IMPLEMENTATION_PLAN.md) for qualification evidence.

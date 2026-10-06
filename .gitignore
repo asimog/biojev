@@ -17,3 +17,6 @@ data/*
 # Windows download metadata and TypeScript build cache
 *:Zone.Identifier
 *.tsbuildinfo
+
+# Local upstream Pi reference clone; production uses npm packages
+/repos/pi/

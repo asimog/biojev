@@ -20,7 +20,6 @@ import { acquireMissionLoop } from "./core/mission-loop.ts"
 import { makeMissionRoutes } from "./http/missions.ts"
 import { JevEngine, JevEngineError } from "./jevengine/JevEngine.ts"
 import { TypeSafeLive } from "./jevengine/TypeSafeLive.ts"
-import { catalogGenesis } from "./platform/genesis.ts"
 import { HttpLive } from "./platform/HttpLive.ts"
 import { acquireOwnership } from "./platform/ownership.ts"
 import { createResearchModels } from "./platform/pi/models.ts"
@@ -62,6 +61,7 @@ const program = Effect.scoped(
         const jev = yield* JevEngine
         const selection = yield* OpenRouterModelConfig
         const roles = yield* acquireRolePrograms({
+          concurrentDirector: true,
           database: ownership.piDatabase,
           blockTimeoutMs: yield* BlockTimeoutMs,
           models: createResearchModels(
@@ -85,7 +85,7 @@ const program = Effect.scoped(
         const commands = yield* acquireMissionLoop(
           {
             ...roles,
-            genesis: catalogGenesis(path.resolve(root, paths.genesisCatalog)),
+            genesis: roles.genesis,
           },
           ready,
         )

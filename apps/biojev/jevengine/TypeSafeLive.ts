@@ -47,10 +47,22 @@ const entry = (
 const question = (value: SemanticQuestion["question"]): Question => {
   switch (value.type) {
     case "noul":
-      return value
+      return {
+        type: "noul",
+        instructions: entry(value.instructions),
+        ...(value.criteria === undefined
+          ? {}
+          : {
+              criteria: {
+                true: entry(value.criteria.true),
+                false: entry(value.criteria.false),
+              },
+            }),
+      }
     case "choice":
       return {
         ...value,
+        instructions: entry(value.instructions),
         criteria: Object.fromEntries(
           Object.entries(value.criteria).map(([key, item]) => [
             key,
@@ -62,6 +74,7 @@ const question = (value: SemanticQuestion["question"]): Question => {
       const [first, second, ...rest] = value.criteria
       return {
         ...value,
+        instructions: entry(value.instructions),
         criteria: [entry(first), entry(second), ...rest.map(entry)],
       }
     }
@@ -212,6 +225,93 @@ export const TypeSafeLive = Layer.effect(JevEngine)(
           : new JevEngineError({ message: "Invalid Jev measurement", cause }),
       ),
     )
-    return JevEngine.of({ measure })
+    const measureBatch = Effect.fn("JevEngine.measureBatch")(
+      function* (inputs: ReadonlyArray<SemanticQuestion>) {
+        const requests = yield* Schema.decodeEffect(
+          Schema.Array(SemanticQuestion).check(
+            Schema.isMinLength(1),
+            Schema.isMaxLength(64),
+          ),
+        )(inputs)
+        const first = requests[0]
+        if (
+          requests.some(
+            (request) =>
+              !sameJson(request.projection.value, first.projection.value),
+          )
+        )
+          return yield* new JevEngineError({
+            message: "Batch questions must share the same projected state",
+          })
+        const payload = {
+          state: { projection: json(first.projection.value) },
+          questions: Object.fromEntries(
+            requests.map((request, index) => [
+              `measurement_${index}`,
+              question(request.question),
+            ]),
+          ),
+          model: config.model,
+        }
+        const bytes = new TextEncoder().encode(JSON.stringify(payload))
+        if (bytes.length > 1024 * 1024)
+          return yield* new JevEngineError({
+            message: "Jev batch exceeds one MiB",
+          })
+        const digest = yield* Effect.promise(() =>
+          crypto.subtle.digest("SHA-256", bytes),
+        )
+        const response = yield* Effect.tryPromise({
+          try: (signal) => client.systemOne(payload, { signal }).withResponse(),
+          catch: (cause) =>
+            new JevEngineError({ message: "TypeSafe batch failed", cause }),
+        })
+        const raw: unknown = response.data
+        const body = yield* Schema.decodeUnknownEffect(
+          Schema.Struct({
+            model: Schema.NonEmptyString,
+            answers: Schema.Record(Schema.String, SemanticAnswer),
+            usage: SemanticMeasurement.fields.usage,
+          }),
+        )(raw)
+        if (Object.keys(body.answers).length !== requests.length)
+          return yield* new JevEngineError({
+            message: "TypeSafe batch answer count mismatch",
+          })
+        const batchId = crypto.randomUUID()
+        return yield* Effect.forEach(requests, (request, index) =>
+          Effect.gen(function* () {
+            const answer = body.answers[`measurement_${index}`]
+            if (answer === undefined || !matches(request.question, answer))
+              return yield* new JevEngineError({
+                message: "TypeSafe batch answer does not match question",
+              })
+            return yield* Schema.decodeEffect(SemanticMeasurement)({
+              measurementId: crypto.randomUUID(),
+              batchId,
+              batchQuestionIndex: index,
+              ...request,
+              primitive: request.question.type,
+              inputHash: Array.from(new Uint8Array(digest), (byte) =>
+                byte.toString(16).padStart(2, "0"),
+              ).join(""),
+              provider: "typesafe",
+              requestedModel: config.model,
+              model: body.model,
+              answer,
+              usage: body.usage,
+              receipt: { requestId: response.requestId ?? null },
+              createdAt: DateTime.toEpochMillis(yield* DateTime.now),
+            })
+          }),
+        )
+      },
+      Effect.mapError((cause) =>
+        cause instanceof JevEngineError
+          ? cause
+          : new JevEngineError({ message: "Invalid Jev batch", cause }),
+      ),
+    )
+    return JevEngine.of({ measure, measureBatch })
   }),
 )

@@ -1,13 +1,17 @@
 import type { Context as ChordContext } from "@earendil-works/chord"
 import {
+  type BinaryReader,
+  type DirReader,
   type ExecutionEnv,
   ExecutionError,
   err,
   FileError,
+  type FileWatcher,
   ok,
   type Result,
   type ShellExecOptions,
   type TextLineReader,
+  type WatchChange,
 } from "@earendil-works/pi-durable/env"
 import {
   Cause,
@@ -19,13 +23,14 @@ import {
   FileSystem,
   Option,
   Path,
+  Queue,
   Schema,
   Semaphore,
   Stream,
 } from "effect"
 import { make } from "effect/process/ChildProcess"
 import { ChildProcessSpawner } from "effect/process/ChildProcessSpawner"
-import { Message, type Request } from "./protocol.ts"
+import { Message, type Request, WireError } from "./protocol.ts"
 
 export class EnvironmentError extends Schema.TaggedError<EnvironmentError>()(
   "EnvironmentError",
@@ -142,9 +147,19 @@ export const acquireLinuxEnvironment = Effect.fn("acquireLinuxEnvironment")(
       onOutput: ShellExecOptions["onOutput"],
       chord: ChordContext,
       receiptId: string,
+      session?: {
+        requests: Queue.Queue<Uint8Array>
+        receive: (message: typeof Message.Type) => void
+      },
     ) {
       const startedAt = DateTime.toEpochMillis(yield* DateTime.now)
       let output = ""
+      let sessionResult:
+        | { ok: true; value: unknown }
+        | { ok: false; error: typeof WireError.Type } = {
+        ok: true,
+        value: null,
+      }
       let namespace: { pid: number; identity: string } | undefined
       const program = Effect.scoped(
         Effect.uninterruptibleMask((restore) =>
@@ -181,7 +196,8 @@ export const acquireLinuxEnvironment = Effect.fn("acquireLinuxEnvironment")(
               // No procfs: untrusted programs cannot address the relay's descriptors.
               "--dir",
               "/proc",
-              "--tmpfs",
+              "--bind",
+              path.join(directory, ".tmp"),
               "/tmp",
               "--dir",
               "/etc",
@@ -262,7 +278,17 @@ export const acquireLinuxEnvironment = Effect.fn("acquireLinuxEnvironment")(
                   )(line)
                   if ("kind" in message && message.kind === "output") {
                     output = (output + message.text).slice(-32768)
-                    yield* Effect.sync(() => onOutput?.(message.text, chord))
+                    yield* Effect.sync(() =>
+                      onOutput?.(message.text, chord, {
+                        stream: message.stream,
+                      }),
+                    )
+                  } else if (session !== undefined && "kind" in message) {
+                    yield* Effect.sync(() => {
+                      if (message.kind === "result")
+                        sessionResult = message.result
+                      session.receive(message)
+                    })
                   } else if ("kind" in message && message.kind === "result") {
                     yield* Deferred.succeed(result, message)
                   }
@@ -341,6 +367,14 @@ export const acquireLinuxEnvironment = Effect.fn("acquireLinuxEnvironment")(
             }
             return yield* restore(
               Effect.gen(function* () {
+                if (session !== undefined) {
+                  yield* Stream.fromQueue(session.requests).pipe(
+                    Stream.run(child.stdin),
+                    Effect.forkScoped,
+                  )
+                  yield* child.exitCode
+                  return sessionResult
+                }
                 yield* Stream.make(
                   new TextEncoder().encode(JSON.stringify(request)),
                 ).pipe(Stream.run(child.stdin))
@@ -401,7 +435,18 @@ export const acquireLinuxEnvironment = Effect.fn("acquireLinuxEnvironment")(
               receiptId,
               environmentId: id,
               method: request.method,
-              args: request.args,
+              args:
+                request.method === "writeFile" ||
+                request.method === "appendFile"
+                  ? [
+                      request.args[0],
+                      {
+                        bytes: Array.isArray(request.args[1])
+                          ? request.args[1].length
+                          : String(request.args[1]).length,
+                      },
+                    ]
+                  : request.args,
               startedAt,
               endedAt,
               output,
@@ -420,7 +465,9 @@ export const acquireLinuxEnvironment = Effect.fn("acquireLinuxEnvironment")(
                     : "FAILED",
               result:
                 exit._tag === "Success"
-                  ? exit.value
+                  ? request.method === "readBinaryFile"
+                    ? { ok: exit.value.ok, transferred: true }
+                    : exit.value
                   : { error: Cause.pretty(exit.cause) },
             }
             receipts.push(receipt)
@@ -519,6 +566,212 @@ export const acquireLinuxEnvironment = Effect.fn("acquireLinuxEnvironment")(
       await run(fs.remove(directory, { recursive: true, force: true }))
     }
     yield* Effect.addFinalizer(() => Effect.promise(cleanup))
+    const openSession = async (
+      method:
+        | "openBinaryReader"
+        | "openDirReader"
+        | "openTextLineReader"
+        | "watch",
+      args: unknown[],
+      chord: ChordContext,
+      onChange?: (change: WatchChange) => void,
+    ) => {
+      if (closed || chord.abortSignal?.aborted)
+        return err<never, FileError>(new FileError("aborted", "Open aborted"))
+      const requests = await run(Queue.make<Uint8Array>())
+      const responses = await run(Queue.make<unknown>())
+      const controller = new AbortController()
+      const task = run(
+        operation(
+          { method, args, cwd, session: true },
+          undefined,
+          chord,
+          crypto.randomUUID(),
+          {
+            requests,
+            receive: (message) => {
+              if ("kind" in message && message.kind === "watch") {
+                const change = Schema.decodeUnknownSync(
+                  Schema.Union([
+                    Schema.Struct({
+                      paths: Schema.mutable(Schema.Array(Schema.String)),
+                    }),
+                    Schema.Struct({ overflow: Schema.Literal(true) }),
+                    Schema.Struct({ error: WireError }),
+                  ]),
+                )(message.change)
+                onChange?.(
+                  "error" in change
+                    ? {
+                        error: fileError(
+                          change.error.code,
+                          change.error.message,
+                        ),
+                      }
+                    : change,
+                )
+              } else if ("kind" in message && message.kind === "result") {
+                void run(Queue.offer(responses, message.result))
+              }
+            },
+          },
+        ),
+        { signal: controller.signal },
+      )
+      active.set(controller, task)
+      let ended = false
+      const lock = await run(Semaphore.make(1))
+      const receive = <A>(schema: Schema.Codec<A>, context: ChordContext) =>
+        run(
+          Effect.raceFirst(
+            Queue.take(responses).pipe(
+              Effect.flatMap((raw) =>
+                Schema.decodeUnknownEffect(
+                  Schema.Union([
+                    Schema.Struct({ ok: Schema.Literal(true), value: schema }),
+                    Schema.Struct({
+                      ok: Schema.Literal(false),
+                      error: WireError,
+                    }),
+                  ]),
+                )(raw),
+              ),
+              Effect.map((result) =>
+                result.ok
+                  ? ok<A, FileError>(result.value)
+                  : err<A, FileError>(
+                      fileError(result.error.code, result.error.message),
+                    ),
+              ),
+            ),
+            Effect.promise(() => task).pipe(
+              Effect.andThen(
+                Effect.fail(
+                  new EnvironmentError({ message: "Reader worker exited" }),
+                ),
+              ),
+            ),
+          ),
+          { signal: context.abortSignal },
+        )
+      await run(
+        Queue.offer(
+          requests,
+          new TextEncoder().encode(
+            `${JSON.stringify({ method, args, cwd, session: true })}\n`,
+          ),
+        ),
+      )
+      const opened = await receive(Schema.Unknown, chord)
+      const close = async () => {
+        if (ended) return
+        ended = true
+        await run(
+          Queue.offer(
+            requests,
+            new TextEncoder().encode(
+              `${JSON.stringify({ action: "close", args: [] })}\n`,
+            ),
+          ),
+        )
+        try {
+          await run(
+            Effect.promise(() => task).pipe(Effect.timeout("5 seconds")),
+          )
+        } catch {
+          controller.abort()
+          await task.catch(() => undefined)
+        }
+        active.delete(controller)
+      }
+      if (!opened.ok) {
+        await close()
+        return opened
+      }
+      const session = {
+        value: opened.value,
+        invoke: <A>(
+          action: string,
+          args: unknown[],
+          schema: Schema.Codec<A>,
+          context: ChordContext,
+        ): Promise<Result<A, FileError>> => {
+          if (ended || closed)
+            return Promise.resolve(
+              err(new FileError("invalid", "Reader closed")),
+            )
+          if (context.abortSignal?.aborted)
+            return Promise.resolve(
+              err(new FileError("aborted", "Read aborted")),
+            )
+          return run(
+            lock.withPermit(
+              Effect.tryPromise({
+                try: async () => {
+                  await run(
+                    Queue.offer(
+                      requests,
+                      new TextEncoder().encode(
+                        `${JSON.stringify({ action, args })}\n`,
+                      ),
+                    ),
+                  )
+                  return await receive(schema, context)
+                },
+                catch: (cause) =>
+                  new EnvironmentError({
+                    message: "Reader request failed",
+                    cause,
+                  }),
+              }),
+            ),
+          ).catch(async () => {
+            // A cancelled wait must not leave an unread response for the next request.
+            await close()
+            return err(
+              new FileError(
+                context.abortSignal?.aborted ? "aborted" : "unknown",
+                "Reader operation did not settle",
+              ),
+            )
+          })
+        },
+        close,
+      }
+      return ok<typeof session, FileError>(session)
+    }
+    const recordRead = async (
+      method: "readBinaryFile" | "readTextFile",
+      filename: string,
+      startedAt: number,
+      result: Result<unknown, FileError>,
+    ) => {
+      const receipt: OperationReceipt = {
+        receiptId: crypto.randomUUID(),
+        environmentId: id,
+        method,
+        args: [filename],
+        startedAt,
+        endedAt: Date.now(),
+        outcome: result.ok ? "SUCCEEDED" : "FAILED",
+        output: "",
+        result: result.ok
+          ? {
+              bytes:
+                result.value instanceof Uint8Array
+                  ? result.value.length
+                  : typeof result.value === "string"
+                    ? new TextEncoder().encode(result.value).length
+                    : 0,
+            }
+          : {
+              error: { code: result.error.code, message: result.error.message },
+            },
+      }
+      receipts.push(receipt)
+      if (options.onReceipt !== undefined) await run(options.onReceipt(receipt))
+    }
+    const maxAssetBytes = 100_000_000
     const env: ExecutionEnv = {
       id,
       get cwd() {
@@ -530,8 +783,17 @@ export const acquireLinuxEnvironment = Effect.fn("acquireLinuxEnvironment")(
       absolutePath: (value, c) =>
         file("absolutePath", [value], Schema.String, c),
       joinPath: (value, c) => file("joinPath", [value], Schema.String, c),
-      readTextFile: (value, c) =>
-        file("readTextFile", [value], Schema.String, c),
+      readTextFile: async (value, c) => {
+        const startedAt = Date.now()
+        const read = await env.readBinaryFile(value, c)
+        const result = read.ok
+          ? ok<string, FileError>(
+              new TextDecoder("utf-8", { ignoreBOM: true }).decode(read.value),
+            )
+          : read
+        await recordRead("readTextFile", value, startedAt, result)
+        return result
+      },
       readTextLines: (value, opts, c) =>
         file(
           "readTextLines",
@@ -540,28 +802,64 @@ export const acquireLinuxEnvironment = Effect.fn("acquireLinuxEnvironment")(
           c,
         ),
       readBinaryFile: async (value, c) => {
-        const result = await file(
-          "readBinaryFile",
-          [value],
-          Schema.Array(Schema.Int),
-          c,
-        )
-        return result.ok ? ok(Uint8Array.from(result.value)) : result
+        const startedAt = Date.now()
+        const result = await (async () => {
+          const opened = await env.openBinaryReader(value, undefined, c)
+          if (!opened.ok) return opened
+          try {
+            const info = await opened.value.info(c)
+            if (!info.ok) return info
+            if (info.value.size > maxAssetBytes)
+              return err<Uint8Array, FileError>(
+                new FileError("invalid", "Asset exceeds 100 MB"),
+              )
+            return await opened.value.read(0, info.value.size, c)
+          } finally {
+            await opened.value.close(c)
+          }
+        })()
+        await recordRead("readBinaryFile", value, startedAt, result)
+        return result
       },
-      writeFile: (value, content, c) =>
-        file(
-          "writeFile",
-          [value, typeof content === "string" ? content : Array.from(content)],
-          Schema.Null,
-          c,
-        ).then((r) => (r.ok ? ok(undefined) : r)),
-      appendFile: (value, content, c) =>
-        file(
-          "appendFile",
-          [value, typeof content === "string" ? content : Array.from(content)],
-          Schema.Null,
-          c,
-        ).then((r) => (r.ok ? ok(undefined) : r)),
+      writeFile: async (value, content, c) => {
+        const bytes =
+          typeof content === "string"
+            ? new TextEncoder().encode(content)
+            : content
+        if (bytes.length > maxAssetBytes)
+          return err(new FileError("invalid", "Asset exceeds 100 MB"))
+        const initial = await file("writeFile", [value, []], Schema.Null, c)
+        if (!initial.ok) return initial
+        for (let offset = 0; offset < bytes.length; offset += 1024 * 1024) {
+          const result = await env.appendFile(
+            value,
+            bytes.subarray(offset, offset + 1024 * 1024),
+            c,
+          )
+          if (!result.ok) return result
+        }
+        return ok(undefined)
+      },
+      appendFile: async (value, content, c) => {
+        const bytes =
+          typeof content === "string"
+            ? new TextEncoder().encode(content)
+            : content
+        const info = await env.fileInfo(value, c)
+        if (!info.ok && info.error.code !== "not_found") return info
+        if ((info.ok ? info.value.size : 0) + bytes.length > maxAssetBytes)
+          return err(new FileError("invalid", "Asset exceeds 100 MB"))
+        for (let offset = 0; offset < bytes.length; offset += 1024 * 1024) {
+          const result = await file(
+            "appendFile",
+            [value, Array.from(bytes.subarray(offset, offset + 1024 * 1024))],
+            Schema.Null,
+            c,
+          )
+          if (!result.ok) return result
+        }
+        return ok(undefined)
+      },
       truncateFile: (value, size, c) =>
         file("truncateFile", [value, size], Schema.Unknown, c).then((r) =>
           r.ok ? ok(undefined) : r,
@@ -593,25 +891,112 @@ export const acquireLinuxEnvironment = Effect.fn("acquireLinuxEnvironment")(
       createTempFile: (opts, c) =>
         file("createTempFile", [opts], Schema.String, c),
       openTextLineReader: async (value, c) => {
-        const result = await file(
-          "openTextLineReader",
-          [value],
-          Schema.Array(TextLine),
-          c,
-        )
-        if (!result.ok) return result
-        let index = 0
-        let ended = false
+        const opened = await openSession("openTextLineReader", [value], c)
+        if (!opened.ok) return opened
         const reader: TextLineReader = {
-          readLine: async (context) =>
-            context.abortSignal?.aborted
-              ? err(new FileError("aborted", "Read aborted"))
-              : ok(ended ? undefined : result.value[index++]),
-          close: async () => {
-            ended = true
+          readLine: async (context) => {
+            const result = await opened.value.invoke(
+              "readLine",
+              [],
+              Schema.NullOr(TextLine),
+              context,
+            )
+            return result.ok ? ok(result.value ?? undefined) : result
           },
+          close: opened.value.close,
         }
         return ok(reader)
+      },
+      openBinaryReader: async (value, opts, context) => {
+        const opened = await openSession(
+          "openBinaryReader",
+          [value, opts],
+          context,
+        )
+        if (!opened.ok) return opened
+        const reader: BinaryReader = {
+          info: (c) => opened.value.invoke("info", [], FileInfo, c),
+          read: async (offset, length, c) => {
+            if (length > 1024 * 1024) {
+              const chunks: Uint8Array[] = []
+              let total = 0
+              if (length > maxAssetBytes)
+                return err(new FileError("invalid", "Read exceeds 100 MB"))
+              while (total < length) {
+                const part = await reader.read(
+                  offset + total,
+                  Math.min(1024 * 1024, length - total),
+                  c,
+                )
+                if (!part.ok) return part
+                chunks.push(part.value)
+                total += part.value.length
+                if (part.value.length === 0) break
+              }
+              const bytes = new Uint8Array(total)
+              let at = 0
+              for (const part of chunks) {
+                bytes.set(part, at)
+                at += part.length
+              }
+              return ok(bytes)
+            }
+            const result = await opened.value.invoke(
+              "read",
+              [offset, length],
+              Schema.Array(Schema.Int),
+              c,
+            )
+            return result.ok ? ok(Uint8Array.from(result.value)) : result
+          },
+          scanLines: (opts, c) =>
+            opened.value.invoke(
+              "scanLines",
+              [opts],
+              Schema.Struct({
+                newlines: Schema.Int,
+                start: Schema.Int,
+                end: Schema.Int,
+                firstLineEnd: Schema.Int,
+                lastLineStart: Schema.Int,
+                selectedBytes: Schema.Int,
+                firstLineBytes: Schema.Int,
+              }),
+              c,
+            ),
+          close: opened.value.close,
+        }
+        return ok(reader)
+      },
+      openDirReader: async (value, c) => {
+        const opened = await openSession("openDirReader", [value], c)
+        if (!opened.ok) return opened
+        const reader: DirReader = {
+          next: (maxEntries, c) =>
+            opened.value.invoke(
+              "next",
+              [maxEntries],
+              Schema.Struct({
+                entries: Schema.mutable(Schema.Array(FileInfo)),
+                done: Schema.Boolean,
+              }),
+              c,
+            ),
+          close: opened.value.close,
+        }
+        return ok(reader)
+      },
+      watch: async (targets, onChange, c) => {
+        const opened = await openSession("watch", [targets], c, onChange)
+        if (!opened.ok) return opened
+        const value = Schema.decodeUnknownSync(
+          Schema.Struct({ mode: Schema.Literals(["native", "polling"]) }),
+        )(opened.value.value)
+        const watcher: FileWatcher = {
+          mode: value.mode,
+          close: opened.value.close,
+        }
+        return ok(watcher)
       },
       exec: (command, opts, c) =>
         call(
@@ -635,21 +1020,17 @@ export const acquireLinuxEnvironment = Effect.fn("acquireLinuxEnvironment")(
       filename: string,
       chord: ChordContext,
     ) {
-      const receiptId = crypto.randomUUID()
-      const read = yield* Effect.promise(() =>
-        call(
-          "readBinaryFile",
-          [filename],
-          Schema.Array(Schema.Int),
-          chord,
-          fileError,
-          undefined,
-          receiptId,
-        ),
+      const before = receipts.length
+      const result = yield* Effect.promise(() =>
+        env.readBinaryFile(filename, chord),
       )
-      const result = read.ok
-        ? ok<Uint8Array, FileError>(Uint8Array.from(read.value))
-        : read
+      const receiptId = receipts
+        .slice(before)
+        .find((receipt) => receipt.method === "readBinaryFile")?.receiptId
+      if (receiptId === undefined)
+        return yield* new EnvironmentError({
+          message: "Artifact read receipt is absent",
+        })
       if (!result.ok)
         return yield* new EnvironmentError({ message: result.error.message })
       const digest = yield* Effect.promise(() =>

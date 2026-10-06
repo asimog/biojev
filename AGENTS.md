@@ -76,8 +76,9 @@ Use scoped Pi Harness resources and role programs. BioLab and JevEngine are the 
 Import only Pi Durable, Pi AI, and Chord from platform/pi. Read
 the dependency decision in specs/architecture/PI_COMPATIBILITY.md before adding
 other Pi packages. Package files live in npm-managed node_modules; platform/pi
-contains only BioJev integration and its tests. Keep one root lockfile. Do not
-vendor or clone Pi into repos/pi or copy upstream code into platform/pi.
+contains only BioJev integration and its tests. Keep one root lockfile.
+The user-requested local reference clone in repos/pi is ignored by Git. Do not
+vendor it, import from it, or copy upstream code into platform/pi.
 
 Effect may acquire/release imported Pi resources. It must not reimplement Pi
 conversations, model turns, task scheduling, resume, compaction, tools, or runtime
@@ -138,9 +139,11 @@ Keep changes small. New requirement = new task.
 ## Genesis
 
 Before changing initialization, discovery, or catalog refresh, read
-`specs/architecture/GENESIS.md`. Supply a replaceable discovery program through
-application composition. BioLab retains broad candidates; Jev annotates without
-pruning; the existing Director chooses the initial objective. Genesis must
+`specs/architecture/GENESIS.md`. Genesis is the existing Director’s open-ended initialization turn (block 0 in
+observation, never a countable ResearchBlock). Director discovers and records
+broad candidates through authorized BioLab tools; Jev measures without pruning.
+During Researcher blocks, the persistent Director performs side work in its own
+Pi environment. Side work cannot replace the active objective or bypass review. Genesis must
 complete before ResearchBlock #1 and never counts toward validation. Source
 identifiers and capabilities are data, never Core policy. Refresh preserves
 completed Genesis.

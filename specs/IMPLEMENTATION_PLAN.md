@@ -1,5 +1,22 @@
 # BioJev implementation specification and plan
 
+## Current expansion
+
+The latest scope replaces production catalog initialization with open-ended
+Director-led Genesis (block 0, excluded from validation), adds Director side work
+during each Researcher block, upgrades Pi Durable/Pi AI/Chord to 1.0.4 and adds
+bounded large-file transfer up to 100 MB per asset or repository archive.
+Native Jev batches and structured questions support the optional cookbook patterns
+in [Jev recipes](guides/JEV_COOKBOOKS.md). No deterministic scientific loop is added.
+Earlier qualification below describes the preceding serial/catalog implementation;
+the changed paths now pass automated regression qualification. `npm run check`
+passes Effect diagnostics, boundaries, lint, typechecking, 72 tests across 18 files,
+and backend/Next.js builds. The tests include 24 imported Pi environment
+conformance cases, a 100 MB artifact round trip, Director-led Genesis and
+concurrent Director side work, and 25 ResearchBlocks with two validation/review
+barriers. Live-provider qualification of these changed paths remains outstanding;
+the earlier live run does not qualify the concurrent implementation.
+
 ## Problem Statement
 
 BioJev must turn a human mission into ongoing bioinformatics and computation
@@ -91,7 +108,7 @@ specifications.
 | Startup | Exclusive advisory ownership of both stores before backend storage/Harness acquisition; composed continuous scheduler | Same-store reopen and active shutdown settle before SQLite release |
 | Feedback | Strict typecheck, Effect diagnostics, boundaries, lint, behavioral tests, and workspace builds | Full feedback passes without weakened diagnostics |
 
-### Execution progress
+### Previous v0 qualification and current expansion
 
 | Slice | State | Evidence / remaining work |
 | --- | --- | --- |
@@ -99,7 +116,7 @@ specifications.
 | 2 | Mission storage and ownership implemented | SQLite reopen/revision/concurrency tests; competing owner and database alias rejection; real backend IDLE and successful store/lock reopening after SIGKILL |
 | 3 | Controlled computation qualified | Actual Python/JSON and public HTTPS retrieval; bundled Pi write/bash; host database/symlink and HTTP denial; abort/namespace teardown; artifact retention/restoration/integrity |
 | 4 | Recording path qualified | Forged capability/role/run and unrelated receipt rejection; immutable/revision checks; real Pi tools → retained result/interpretation → reopen → fresh Validator artifact reuse |
-| G | Genesis lifecycle implemented | Generic discovery/Jev program, broad retained candidates, explicit partial failures, transactional inaugural handoff, Refresh preservation and reopen; actual external catalog ingestion deferred |
+| G | Director-led Genesis implemented | Existing Director performs open-ended discovery and authorized BioLab updates; real artifact/Jev/inaugural handoff integration passes; no prescribed catalog-ingestion program |
 | 5 | Role/block path qualified | Actual Python and shell outputs, honest no-results dossiers, persistent Director/fresh Researcher, explicit Pi timeout abort, cancellation/orphans, and fresh work after pause |
 | 6 | Validation/review gate qualified | Exact ten-block window through actual Pi roles; failed Validator and Director attempts preserve gates; fresh Validator retry; explicit reviewed report before block eleven; canonical gate survives SQLite reopen |
 | 7 | Qualified | Actual HTTP start/pause/resume/revision/stop drives imported Pi and real BioLab; acknowledgements await cleanup. SSE disconnect leaves cognition running. Reopen preserves orphan identity without unsafe replay, including absent Pi state. Production SIGKILL/reopen and active SIGTERM checks pass; provider smoke remains separate from deterministic trajectory qualification |
@@ -128,7 +145,7 @@ model or a mandate to create every listed table.
 - Establish exclusive scheduler/store ownership before opening Pi storage. Keep canonical and runtime databases distinct; configuration must reject the same resolved store. Release ownership after resource cleanup.
 - Keep source content and scientific representations open. Stable institutional references, provenance, and actual boundary validation are required; a complete biological ontology or universal source schema is not.
 - Use the implemented mission command, history-read, and SSE snapshot interfaces in http/missions.ts and the validated view contracts in http/views.ts. Preserve the status path; add route payloads only for implemented behavior.
-- Research uses one role at a time; computation inside that role may be parallel. Never install subagent tools or allow detached scientific work to evade abort and block cleanup.
+- Researcher and one persistent Director side-work turn may run concurrently in separate environments; Validator and strategic handoffs remain gated. Never install subagent tools or allow detached scientific work to evade abort and block cleanup.
 - Current restart policy explicitly aborts interrupted runtime work before enabling Pi scheduling, then settles its original institutional identity with the actual deadline, retained dossier and available records. Unknown outcomes stay failed/orphaned rather than replayed. Missing runtime state follows the same conservative policy. Exact continuation of interrupted cognition is not required for v0.
 - Command acknowledgement follows canonical state change and owned-work cleanup. Revision retains its history and invalidates an unused objective from the previous direction; revision of active research orphans that work before the next Director decision.
 
@@ -419,12 +436,12 @@ readiness after interruption; completion still requires both inaugural reference
 Automated qualification uses real temporary BioLab/Pi SQLite, imported Pi with
 deterministic responses, and actual controlled computation. It is application
 end-to-end qualification, not a live GDC/bio.tools ingestion or browser-driven
-mission claim. Actual external catalog ingestion remains intentionally deferred.
+mission claim. This older fixture used supplied candidates; current production discovery is Director-led and does not require a catalog-ingestion program.
 
 Local Linux v0 is qualified against the acceptance checks below. This is a
 single-operator loopback deployment, with configured Linux isolation prerequisites,
-provider credentials and a supplied catalog. External catalog ingestion is still
-intentionally deferred. Deterministic imported-Pi tests qualify the failure and
+provider credentials and, for that earlier qualification, a supplied catalog.
+Current production Genesis uses Director cognition and authorized discovery tools. Deterministic imported-Pi tests qualify the failure and
 recovery paths. The later configured five-minute live run completed a real-provider
 ten-block window, Validator and Director review; its report distinguishes lifecycle
 completion from the trajectory’s scientific and retrieval limitations.
@@ -445,8 +462,8 @@ Ten checks passed with the existing five real results and orphan history, includ
 both store integrity checks. The block inspector is a recent-50 view; the durable
 record history uses append-only cursor pagination. Usage cost is explicitly a
 catalog estimate, and provider billing is unavailable. Public/multi-user hosting,
-aggregate workspace/memory quotas, and automatic external catalog ingestion are
-not qualified by this local v0 result; the execution guide records actual limits.
+aggregate workspace/memory quotas, and the newly changed Director-led external
+discovery/concurrent lifecycle are not live-qualified by this older result; the execution guide records actual limits.
 
 Live provider/browser qualification admitted a real mission, retained a
 TypeSafe Genesis measurement, completed the inaugural Director handoff, and

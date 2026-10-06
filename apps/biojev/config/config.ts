@@ -49,9 +49,6 @@ export const TypeSafeConfig = Config.all({
 })
 
 export const ApplicationPaths = Config.all({
-  genesisCatalog: Config.String("BIOJEV_GENESIS_CATALOG").pipe(
-    Config.withDefault("data/genesis.json"),
-  ),
   artifactDirectory: Config.String("BIOJEV_ARTIFACT_DIRECTORY").pipe(
     Config.withDefault("data/artifacts"),
   ),

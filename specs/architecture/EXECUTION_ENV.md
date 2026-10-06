@@ -97,3 +97,15 @@ terminal block state through BioLab. Idle alone does not prove process cleanup.
 See [workflows](../workflows/README.md#timeout-and-cancellation) for sequencing.
 Future implementation lives within the Pi integration described by the
 [repository guide](../guides/REPOSITORY.md).
+
+
+## Pi 1.0.4 and large assets
+
+Binary and directory readers and watchers retain imported upstream handles inside
+live sandbox workers. Positional reads preserve open-file identity across rename;
+line scanning occurs inside the environment. Binary transfers use chunks of at
+most one MiB instead of a whole-file JSON array. Retention/restoration supports
+100,000,000 bytes per asset or repository archive; larger binary assets are
+rejected explicitly. Extracted repository aggregate size is not a disk quota.
+Shell argv execution preserves arguments and stdout/stderr stream identity.
+Temporary files persist within the owned environment and are removed at cleanup.

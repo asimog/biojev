@@ -25,7 +25,7 @@ import {
   type ActorAuthority,
   AgentRun,
   type InstitutionalRecord,
-  type RetainedRecord,
+  RetainedRecord,
 } from "./model/Recording.ts"
 
 const reject = (message: string) =>
@@ -51,6 +51,10 @@ export const makeLifecycle = (
     authorize: (
       authority: ActorAuthority,
     ) => Effect.Effect<AgentRun, BioLabError>
+    artifact: (
+      authority: ActorAuthority,
+      id: string,
+    ) => Effect.Effect<unknown, BioLabError>
     refs: (
       refs: ReadonlyArray<CanonicalRef>,
       expectedKind?: string,
@@ -125,6 +129,19 @@ export const makeLifecycle = (
       const rows = yield* sql<{
         body: string
       }>`SELECT body FROM genesis_measurements WHERE missionId = ${missionId} AND id = ${measurementId}`
+      if (rows.length === 0) {
+        const ordinary = yield* sql<{
+          body: string
+        }>`SELECT body FROM records WHERE missionId = ${missionId} AND id = ${measurementId} AND kind = 'SemanticMeasurement'`
+        if (ordinary.length === 1) {
+          const retained = yield* decode(
+            Schema.fromJsonString(RetainedRecord),
+            ordinary[0].body,
+          )
+          if (retained.record.kind === "SemanticMeasurement")
+            return retained.record.value
+        }
+      }
       if (rows.length === 0)
         return yield* new BioLabError({
           code: "NOT_FOUND",
@@ -158,6 +175,15 @@ export const makeLifecycle = (
             return yield* reject(
               "Genesis cannot replace completed initialization or use stale mission context",
             )
+          if (
+            new Set(value.configuredInputIds).size !==
+              value.configuredInputIds.length ||
+            new Set(value.outcomes.map((outcome) => outcome.inputId)).size !==
+              value.outcomes.length
+          )
+            return yield* reject(
+              "Discovery input identities and outcomes must be unique",
+            )
           const { candidates, measurements, ...details } = value
           const ids = new Set(candidates.map((candidate) => candidate.id))
           if (ids.size !== candidates.length)
@@ -165,25 +191,55 @@ export const makeLifecycle = (
               "Discovery candidate identities must be unique",
             )
           for (const measurement of measurements) {
-            if (
-              measurement.originRunId !== `${value.missionId}:genesis` ||
-              measurement.subjectRefs.length === 0 ||
-              measurement.subjectRefs.some((ref) => {
-                const candidate = candidates.find(
-                  (candidate) => candidate.id === ref.id,
-                )
-                return (
-                  candidate === undefined ||
-                  ref.kind !==
-                    (candidate.kind === "source"
-                      ? "DiscoveredSource"
-                      : "DiscoveredCapability")
-                )
-              })
-            )
-              return yield* reject(
-                "Genesis measurement attribution does not match candidates",
+            if (measurement.originRunId !== `${value.missionId}:genesis`) {
+              const origin = yield* deps.getRun(measurement.originRunId)
+              if (
+                origin.role !== "director" ||
+                origin.missionId !== value.missionId
               )
+                return yield* reject(
+                  "Discovery measurement must belong to this Director",
+                )
+              const retained = yield* sql<{
+                body: string
+              }>`SELECT body FROM records WHERE id = ${measurement.measurementId} AND kind = 'SemanticMeasurement' AND runId = ${origin.runId}`
+              if (retained.length !== 1)
+                return yield* reject(
+                  "Discovery requires a retained semantic measurement",
+                )
+              const stored = yield* decode(
+                Schema.fromJsonString(RetainedRecord),
+                retained[0].body,
+              )
+              if (
+                stored.record.kind !== "SemanticMeasurement" ||
+                !Schema.toEquivalence(SemanticMeasurement)(
+                  stored.record.value,
+                  measurement,
+                )
+              )
+                return yield* reject(
+                  "Discovery semantic measurement must match canonical history",
+                )
+            }
+            if (measurement.subjectRefs.length === 0)
+              return yield* reject(
+                "Discovery measurement requires candidate references",
+              )
+            for (const ref of measurement.subjectRefs) {
+              const candidate =
+                candidates.find((candidate) => candidate.id === ref.id) ??
+                (yield* getDiscoveryCandidate(value.missionId, ref.id))
+              if (
+                ref.kind !==
+                (candidate.kind === "source"
+                  ? "DiscoveredSource"
+                  : "DiscoveredCapability")
+              )
+                return yield* reject(
+                  "Discovery measurement attribution does not match candidates",
+                )
+            }
           }
           for (const candidate of candidates) {
             const rows = yield* sql<{
@@ -194,6 +250,8 @@ export const makeLifecycle = (
             yield* sql`INSERT OR IGNORE INTO discovered_candidates (missionId, id, body) VALUES (${value.missionId}, ${candidate.id}, ${JSON.stringify(candidate)})`
           }
           for (const measurement of measurements) {
+            if (measurement.originRunId !== `${value.missionId}:genesis`)
+              continue
             const rows = yield* sql<{
               body: string
             }>`SELECT body FROM genesis_measurements WHERE missionId = ${value.missionId} AND id = ${measurement.measurementId}`
@@ -201,24 +259,58 @@ export const makeLifecycle = (
               return yield* reject("Semantic measurement identity is immutable")
             yield* sql`INSERT OR IGNORE INTO genesis_measurements (missionId, id, body) VALUES (${value.missionId}, ${measurement.measurementId}, ${JSON.stringify(measurement)})`
           }
+          const priorProgram =
+            previous?.programId === details.programId &&
+            previous.programVersion === details.programVersion
+              ? previous
+              : null
+          const outcomes = new Map(
+            (priorProgram?.outcomes ?? []).map((outcome) => [
+              outcome.inputId,
+              outcome,
+            ]),
+          )
+          for (const outcome of details.outcomes)
+            outcomes.set(outcome.inputId, outcome)
           const retained = {
             ...details,
-            sourceIds: candidates
-              .filter((candidate) => candidate.kind === "source")
-              .map((candidate) => candidate.id),
-            capabilityIds: candidates
-              .filter((candidate) => candidate.kind === "capability")
-              .map((candidate) => candidate.id),
-            semanticMeasurementIds: measurements.map(
-              (measurement) => measurement.measurementId,
-            ),
+            configuredInputIds: [
+              ...new Set([
+                ...(priorProgram?.configuredInputIds ?? []),
+                ...details.configuredInputIds,
+              ]),
+            ],
+            outcomes: [...outcomes.values()],
+            sourceIds: [
+              ...new Set([
+                ...(previous?.sourceIds ?? []),
+                ...candidates
+                  .filter((candidate) => candidate.kind === "source")
+                  .map((candidate) => candidate.id),
+              ]),
+            ],
+            capabilityIds: [
+              ...new Set([
+                ...(previous?.capabilityIds ?? []),
+                ...candidates
+                  .filter((candidate) => candidate.kind === "capability")
+                  .map((candidate) => candidate.id),
+              ]),
+            ],
+            semanticMeasurementIds: [
+              ...new Set([
+                ...(previous?.semanticMeasurementIds ?? []),
+                ...measurements.map((measurement) => measurement.measurementId),
+              ]),
+            ],
           }
           const snapshot: GenesisSnapshot = {
             ...retained,
             normalizerVersions: [
-              ...new Set(
-                candidates.map((candidate) => candidate.normalizerVersion),
-              ),
+              ...new Set([
+                ...(previous?.normalizerVersions ?? []),
+                ...candidates.map((candidate) => candidate.normalizerVersion),
+              ]),
             ],
             sourceRecordsImported: retained.sourceIds.length,
             capabilityCandidatesImported: retained.capabilityIds.length,
@@ -242,6 +334,36 @@ export const makeLifecycle = (
         }),
       )
     },
+  )
+  const recordAgentDiscovery = Effect.fn("BioLab.recordAgentDiscovery")(
+    function* (authority: ActorAuthority, input: GenesisDiscovery) {
+      const run = yield* deps.authorize(authority)
+      if (
+        run.role !== "director" ||
+        input.missionId !== run.missionId ||
+        input.missionRevision !== run.missionRevision
+      )
+        return yield* reject("Only the current Director can record discovery")
+      for (const candidate of input.candidates) {
+        yield* deps.artifact(authority, candidate.snapshotRef)
+      }
+      for (const outcome of input.outcomes) {
+        if (outcome.snapshotRef !== null)
+          yield* deps.artifact(authority, outcome.snapshotRef)
+      }
+      const previous = yield* getGenesis(run.missionId)
+      return yield* recordGenesisDiscovery(
+        input,
+        previous?.status === "COMPLETED",
+        previous?.status !== "COMPLETED" &&
+          (previous?.semanticMeasurementIds.length ?? 0) +
+            input.measurements.length ===
+            0
+          ? "DISCOVERING"
+          : undefined,
+      )
+    },
+    atomic,
   )
   const getRuns = Effect.fn("BioLab.getRuns")(function* (missionId: string) {
     const rows = yield* sql<{
@@ -292,8 +414,14 @@ export const makeLifecycle = (
     const objectives = yield* sql<{
       objectiveId: string
     }>`SELECT objectiveId FROM objectives WHERE missionId = ${missionId} AND status = 'READY' ORDER BY rowid LIMIT 1`
+    const ignoreSide =
+      excludeRun !== undefined &&
+      (yield* deps.getRun(excludeRun)).role === "researcher"
     const active = (yield* getRuns(missionId)).filter(
-      (run) => run.status === "ACTIVE" && run.runId !== excludeRun,
+      (run) =>
+        run.status === "ACTIVE" &&
+        run.runId !== excludeRun &&
+        !(ignoreSide && run.purpose === "DIRECTOR_SIDE_WORK"),
     )
     const validationDue =
       validation !== undefined &&
@@ -378,6 +506,7 @@ export const makeLifecycle = (
           const run = yield* deps.authorize(authority)
           if (
             run.role !== "director" ||
+            run.purpose === "DIRECTOR_SIDE_WORK" ||
             run.missionId !== value.missionId ||
             value.nextObjective.missionId !== run.missionId ||
             value.nextObjective.originDirectorDecisionId !== value.decisionId
@@ -723,6 +852,7 @@ export const makeLifecycle = (
     getDiscoveryCandidate,
     searchDiscovery,
     getGenesis,
+    recordAgentDiscovery,
     recordGenesisDiscovery: (input: GenesisDiscovery, phase?: "DISCOVERING") =>
       recordGenesisDiscovery(input, false, phase),
     getLifecycle,

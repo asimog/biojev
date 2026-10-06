@@ -28,18 +28,21 @@ export const SemanticQuestion = Schema.Struct({
   question: Schema.Union([
     Schema.Struct({
       type: Schema.Literal("noul"),
-      instructions: Schema.NonEmptyString,
+      instructions: Entry,
+      criteria: Schema.optionalKey(
+        Schema.Struct({ true: Entry, false: Entry }),
+      ),
     }),
     Schema.Struct({
       type: Schema.Literal("choice"),
-      instructions: Schema.NonEmptyString,
+      instructions: Entry,
       criteria: Schema.Record(Schema.NonEmptyString, Entry).check(
         Schema.isMinProperties(1),
       ),
     }),
     Schema.Struct({
       type: Schema.Literal("score"),
-      instructions: Schema.NonEmptyString,
+      instructions: Entry,
       criteria: Schema.TupleWithRest(Schema.Tuple([Entry, Entry]), [Entry]),
     }),
   ]),
@@ -69,6 +72,10 @@ export type SemanticAnswer = typeof SemanticAnswer.Type
 
 export const SemanticMeasurement = Schema.Struct({
   measurementId: Schema.NonEmptyString,
+  batchId: Schema.optionalKey(Schema.NonEmptyString),
+  batchQuestionIndex: Schema.optionalKey(
+    Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  ),
   originRunId: Schema.NonEmptyString,
   questionId: Schema.NonEmptyString,
   questionVersion: Schema.NonEmptyString,
@@ -97,6 +104,9 @@ export type SemanticMeasurement = typeof SemanticMeasurement.Type
 export class JevEngine extends Context.Service<
   JevEngine,
   {
+    readonly measureBatch?: (
+      requests: ReadonlyArray<SemanticQuestion>,
+    ) => Effect.Effect<ReadonlyArray<SemanticMeasurement>, JevEngineError>
     readonly measure: (
       request: SemanticQuestion,
     ) => Effect.Effect<SemanticMeasurement, JevEngineError>

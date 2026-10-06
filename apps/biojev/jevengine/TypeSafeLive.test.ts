@@ -288,3 +288,80 @@ it.effect("cancels the SDK request and releases the Effect HTTP request", () =>
     ).pipe(Effect.provide(server))
   }),
 )
+
+it.effect(
+  "batches structured feature questions in one native request and rejects mismatched projections",
+  () => {
+    let calls = 0
+    const routes = HttpRouter.add(
+      "POST",
+      "/v1/systemone",
+      Effect.gen(function* () {
+        calls++
+        const incoming = yield* HttpServerRequest.HttpServerRequest
+        const body = yield* incoming.json
+        assert.containsAllKeys(body, ["state", "questions"])
+        return yield* HttpServerResponse.json({
+          model: "fixture-model",
+          answers: {
+            measurement_0: { type: "noul", noul: 0.2 },
+            measurement_1: {
+              type: "score",
+              score: 0.8,
+              confidence: 0.8,
+              legend: { "0": "Absent", "1": "Present" },
+              probabilities: { "0": 0.2, "1": 0.8 },
+            },
+          },
+          usage: { input_tokens: 12, output_tokens: 4 },
+        })
+      }),
+    )
+    const server = HttpRouter.serve(routes, { disableListenLog: true }).pipe(
+      Layer.provideMerge(NodeHttpServer.layerTest),
+    )
+    return runWithJev(
+      Effect.gen(function* () {
+        const jev = yield* JevEngine
+        if (jev.measureBatch === undefined)
+          return yield* Effect.die("Missing native batch")
+        const questions = [
+          request({
+            type: "noul",
+            instructions: { question: "Does the state describe a limitation?" },
+            criteria: {
+              true: "Explicit limitation",
+              false: "No limitation stated",
+            },
+          }),
+          request({
+            type: "score",
+            instructions: "Feature intensity",
+            criteria: ["Absent", "Present"],
+          }),
+        ]
+        const answers = yield* jev.measureBatch(questions)
+        assert.lengthOf(answers, 2)
+        assert.equal(calls, 1)
+        assert.equal(answers[0].inputHash, answers[1].inputHash)
+        assert.isString(answers[0].batchId)
+        assert.equal(answers[0].batchId, answers[1].batchId)
+        assert.deepEqual(
+          answers.map((answer) => answer.batchQuestionIndex),
+          [0, 1],
+        )
+        const invalid = yield* jev
+          .measureBatch([
+            questions[0],
+            {
+              ...questions[1],
+              projection: { ...questions[1].projection, value: "different" },
+            },
+          ])
+          .pipe(Effect.result)
+        assert.equal(invalid._tag, "Failure")
+        assert.equal(calls, 1)
+      }),
+    ).pipe(Effect.provide(server))
+  },
+)

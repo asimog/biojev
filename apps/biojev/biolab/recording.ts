@@ -150,6 +150,24 @@ export const makeRecording = (
             "beginRun",
             "Mission is not running",
           )
+        if (value.purpose === "DIRECTOR_SIDE_WORK") {
+          const liveRows = yield* sql<{
+            body: string
+          }>`SELECT body FROM agent_runs WHERE missionId = ${value.missionId} AND json_extract(body, '$.status') = 'ACTIVE'`
+          const live = yield* Effect.forEach(liveRows, (row) =>
+            decode(Schema.fromJsonString(AgentRun), row.body),
+          )
+          if (
+            value.role !== "director" ||
+            !live.some((run) => run.role === "researcher") ||
+            live.some((run) => run.role === "director")
+          )
+            return yield* failure(
+              "CONFLICT",
+              "beginRun",
+              "Director side work requires one active Researcher and no active Director",
+            )
+        }
         const rows = yield* sql<{
           body: string
         }>`SELECT body FROM agent_runs WHERE runId = ${value.runId}`
@@ -165,6 +183,29 @@ export const makeRecording = (
             const rows = yield* sql<{
               body: string
             }>`SELECT body FROM genesis WHERE missionId = ${run.missionId}`
+            if (rows.length === 0) {
+              const initial: GenesisSnapshot = {
+                genesisId: `${run.missionId}:genesis`,
+                missionId: run.missionId,
+                missionRevision: mission.revision,
+                programId: "director-discovery",
+                programVersion: "1",
+                configuredInputIds: [],
+                outcomes: [],
+                sourceIds: [],
+                capabilityIds: [],
+                semanticMeasurementIds: [],
+                normalizerVersions: [],
+                sourceRecordsImported: 0,
+                capabilityCandidatesImported: 0,
+                startedAt: run.createdAt,
+                completedAt: null,
+                status: "DISCOVERING",
+                inauguralDirectorDecisionId: null,
+                initialResearchObjectiveId: null,
+              }
+              yield* sql`INSERT INTO genesis (missionId, body) VALUES (${run.missionId}, ${JSON.stringify(initial)})`
+            }
             if (rows.length > 0) {
               const genesis = yield* decode(
                 Schema.fromJsonString(GenesisSnapshot),
@@ -235,6 +276,8 @@ export const makeRecording = (
               Schema.fromJsonString(GenesisSnapshot),
               rows[0].body,
             )
+            if (genesis.status === "DISCOVERING")
+              yield* sql`UPDATE genesis SET body = ${JSON.stringify({ ...genesis, status: "FAILED" })} WHERE missionId = ${run.missionId}`
             if (genesis.status === "DIRECTOR_RUNNING")
               yield* sql`UPDATE genesis SET body = ${JSON.stringify({ ...genesis, status: "READY_FOR_DIRECTION" })} WHERE missionId = ${run.missionId}`
           }

@@ -60,7 +60,8 @@ export const acquireMissionLoop = Effect.fn("Core.acquireMissionLoop")(
                   ((action === "RUN_DIRECTOR" || action === "RUN_VALIDATOR") &&
                     next === action) ||
                   (action === "RUN_GENESIS" &&
-                    (genesis?.status === "FAILED" ||
+                    (genesis === null ||
+                      genesis?.status === "FAILED" ||
                       (before?.status === "READY_FOR_DIRECTION" &&
                         before.missionRevision === state.mission.revision &&
                         next === "RUN_GENESIS")))

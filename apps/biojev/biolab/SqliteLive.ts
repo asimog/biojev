@@ -219,6 +219,7 @@ export const BioLabLive = (filename: string) =>
           getRun: recording.getRun,
           authorize: authorizeActor,
           refs: checkReferences,
+          artifact: recording.getArtifact,
         }),
         createMission,
         reviseMission,

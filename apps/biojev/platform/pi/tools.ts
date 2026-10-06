@@ -23,7 +23,10 @@ import {
   ScientificResult,
   Uncertainty,
 } from "../../biolab/model/Domain.ts"
-import type { GenesisSnapshot } from "../../biolab/model/Genesis.ts"
+import {
+  GenesisDiscovery,
+  type GenesisSnapshot,
+} from "../../biolab/model/Genesis.ts"
 import { CapabilitySelection } from "../../biolab/model/Learning.ts"
 import type {
   ResearchBlock,
@@ -35,6 +38,7 @@ import type {
   SemanticAuthority,
 } from "../../biolab/model/Recording.ts"
 import { Operation, ScienceRecord } from "../../biolab/model/Recording.ts"
+import { semanticFeatures } from "../../jevengine/features.ts"
 import { type JevEngine, SemanticQuestion } from "../../jevengine/JevEngine.ts"
 import type {
   acquireLinuxEnvironment,
@@ -116,6 +120,61 @@ export const makeBioLabTools = Effect.fn("Pi.makeBioLabTools")(
       api.output(JSON.stringify(value))
       return {}
     }
+    const discoveryInput = Schema.Struct({
+      ...GenesisDiscovery.mapFields(
+        Struct.omit(["missionId", "missionRevision", "measurements"]),
+      ).fields,
+      measurementRefs: Schema.optionalKey(
+        Schema.Array(
+          Schema.Struct({
+            kind: Schema.Literal("SemanticMeasurement"),
+            id: Schema.NonEmptyString,
+          }),
+        ),
+      ),
+    })
+    const discoveryTools =
+      actor.role !== "director"
+        ? []
+        : [
+            defineTool({
+              name: "record_discovery",
+              description:
+                "Retain a broad discovered scientific landscape in BioLab. Retrieve and paginate sources freely with coding tools; retain actual snapshots first and use their Artifact ids as snapshotRef. Supply a candidate batch and explicit partial failures; BioLab retains the accumulated map. Pass measurementRefs from actual semantic tool results to associate relevant retained measurements with discovery. Later calls after Genesis are Refresh, never reinitialization. No source or scientific method is prescribed.",
+              parameters: Type.Unsafe<typeof discoveryInput.Type>(
+                Schema.toJsonSchemaDocument(discoveryInput).schema,
+              ),
+              replay: "unsafe",
+              execute: (value, api, context) =>
+                emit(
+                  Effect.gen(function* () {
+                    const decoded =
+                      yield* Schema.decodeEffect(discoveryInput)(value)
+                    const { measurementRefs = [], ...discovery } = decoded
+                    const measurements = yield* Effect.forEach(
+                      measurementRefs,
+                      (ref) =>
+                        Effect.gen(function* () {
+                          const retained = yield* lab.getRecord(ref)
+                          if (retained.record.kind !== "SemanticMeasurement")
+                            return yield* Effect.die(
+                              "Invalid semantic reference",
+                            )
+                          return retained.record.value
+                        }),
+                    )
+                    return yield* lab.recordAgentDiscovery(input.actor, {
+                      ...discovery,
+                      missionId: actor.missionId,
+                      missionRevision: actor.missionRevision ?? 0,
+                      measurements,
+                    })
+                  }),
+                  api,
+                  context,
+                ),
+            }),
+          ]
     const search = defineTool({
       name: "search_memory",
       description:
@@ -432,19 +491,23 @@ export const makeBioLabTools = Effect.fn("Pi.makeBioLabTools")(
       Struct.omit(["reportId", "cycleId", "blockRefs"]),
     )
     const handoffSchema =
-      actor.role === "director"
-        ? directorInput
-        : actor.role === "researcher"
-          ? researcherInput
-          : validatorInput
+      actor.purpose === "DIRECTOR_SIDE_WORK"
+        ? Schema.Struct({})
+        : actor.role === "director"
+          ? directorInput
+          : actor.role === "researcher"
+            ? researcherInput
+            : validatorInput
     const handoff = defineTool({
       name: "submit_handoff",
       description:
-        actor.role === "director"
-          ? "Retain your strategic decision and one bounded objective. Cite basisValidationReportId when review is pending. You choose the problem; Researcher chooses the method."
-          : actor.role === "researcher"
-            ? "Retain your honest ResearchDossier. Reference actual canonical records; explicit absence of results is valid. This ends your investigation."
-            : "Retain your independent ValidationReport for the exact provided window. Critique and recommend; Director chooses the next objective.",
+        actor.purpose === "DIRECTOR_SIDE_WORK"
+          ? "Finish Director side work; retained learning remains canonical. No next objective is created."
+          : actor.role === "director"
+            ? "Retain your strategic decision and one bounded objective. Cite basisValidationReportId when review is pending. You choose the problem; Researcher chooses the method."
+            : actor.role === "researcher"
+              ? "Retain your honest ResearchDossier. Reference actual canonical records; explicit absence of results is valid. This ends your investigation."
+              : "Retain your independent ValidationReport for the exact provided window. Critique and recommend; Director chooses the next objective.",
       parameters: Type.Unsafe<unknown>(
         Schema.toJsonSchemaDocument(handoffSchema).schema,
       ),
@@ -456,6 +519,11 @@ export const makeBioLabTools = Effect.fn("Pi.makeBioLabTools")(
             const payload = yield* Schema.decodeUnknownEffect(
               Schema.JsonObject,
             )(value)
+            if (
+              actor.role === "director" &&
+              actor.purpose === "DIRECTOR_SIDE_WORK"
+            )
+              return { completed: true }
             if (actor.role === "director") {
               const objective = yield* Schema.decodeUnknownEffect(
                 Schema.JsonObject,
@@ -623,14 +691,80 @@ export const makeBioLabTools = Effect.fn("Pi.makeBioLabTools")(
                       ...value,
                       originRunId: actor.runId,
                     })
+                    const retained = {
+                      ...measurement,
+                      measurementId: `${actor.runId}:${api.taskId}`,
+                    }
                     const ref = yield* lab.recordSemanticMeasurement(
                       authority,
-                      {
-                        ...measurement,
-                        measurementId: `${actor.runId}:${api.taskId}`,
-                      },
+                      retained,
                     )
-                    return { ref, measurement }
+                    return {
+                      ref,
+                      measurement: retained,
+                      features: semanticFeatures(retained.answer),
+                    }
+                  }),
+                  api,
+                  context,
+                ),
+            }),
+          ]
+    const batchQuestion = SemanticQuestion.mapFields(
+      Struct.omit(["originRunId"]),
+    )
+    const batchInput = Schema.Struct({
+      questions: Schema.Array(batchQuestion).check(
+        Schema.isMinLength(1),
+        Schema.isMaxLength(64),
+      ),
+    })
+    const batchTools =
+      input.jev?.measureBatch === undefined || input.semantic === undefined
+        ? []
+        : [
+            defineTool({
+              name: "measure_semantics_batch",
+              description:
+                "Ask up to 64 independently versioned Jev questions over the same projected state in one native TypeSafe request. Use any Noul, Choice or Score rubric you design. Supports semantic search/comparison, entity alignment, citation checks, question-derived numeric features and uncertainty analysis. You decide whether/how to use results; no automatic research policy or feature-search loop is imposed. Usage belongs to the shared receipt, not each answer independently.",
+              parameters: Type.Unsafe<typeof batchInput.Type>(
+                Schema.toJsonSchemaDocument(batchInput).schema,
+              ),
+              replay: "unsafe",
+              execute: (value, api, context) =>
+                emit(
+                  Effect.gen(function* () {
+                    const decoded =
+                      yield* Schema.decodeEffect(batchInput)(value)
+                    const measureBatch = input.jev?.measureBatch
+                    const authority = input.semantic
+                    if (measureBatch === undefined || authority === undefined)
+                      return yield* Effect.die("Batch semantics unavailable")
+                    const measurements = yield* measureBatch(
+                      decoded.questions.map((question) => ({
+                        ...question,
+                        originRunId: actor.runId,
+                      })),
+                    )
+                    return yield* Effect.forEach(
+                      measurements,
+                      (measurement, index) =>
+                        Effect.gen(function* () {
+                          const retained = {
+                            ...measurement,
+                            measurementId: `${actor.runId}:${api.taskId}:${index}`,
+                          }
+                          const ref = yield* lab.recordSemanticMeasurement(
+                            authority,
+                            retained,
+                          )
+                          return {
+                            ref,
+                            measurement: retained,
+                            features: semanticFeatures(retained.answer),
+                          }
+                        }),
+                    )
                   }),
                   api,
                   context,
@@ -652,6 +786,8 @@ export const makeBioLabTools = Effect.fn("Pi.makeBioLabTools")(
         handoff,
         ...capabilityTools,
         ...semanticTools,
+        ...batchTools,
+        ...discoveryTools,
       ],
     })
   },

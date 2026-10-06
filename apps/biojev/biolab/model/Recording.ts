@@ -22,6 +22,7 @@ export const BeginRun = Schema.Struct({
   conversationId: Schema.NonEmptyString,
   environmentId: Schema.NonEmptyString,
   blockId: Schema.optionalKey(Schema.NonEmptyString),
+  purpose: Schema.optionalKey(Schema.Literal("DIRECTOR_SIDE_WORK")),
 })
 export type BeginRun = typeof BeginRun.Type
 

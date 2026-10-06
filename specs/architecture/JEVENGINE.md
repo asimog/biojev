@@ -78,3 +78,25 @@ Individual ResearchBlocks remain free to omit Jev.
 
 [Genesis](GENESIS.md) owns initialization lifecycle, provenance, partial-failure
 policy, and the distinction from later Refresh.
+
+
+## Open-ended semantic programs
+
+measureBatch sends up to 64 independently versioned questions over one shared
+projection in a native TypeSafe request. Instructions and criterion descriptions
+may be structured JSON; Noul supports explicit true/false descriptions. Results
+are validated against each exact question and retained with trusted run identity.
+A batch has an explicit batchId/question index and shares provider usage and a request receipt; never sum that same usage
+once per answer. One-MiB request and four-MiB response limits remain explicit.
+
+Agents may propose/revise semantic questions, derive features from returned
+probabilities and test those features against real held-out outcomes using their
+Pi environment. Director owns its strategy; Researcher owns local method;
+Validator independently checks the resulting evidence. Jev has no autonomous
+feature-search loop or authority to turn semantic confidence into scientific
+truth. [Cookbook recipes](../guides/JEV_COOKBOOKS.md) cover the available patterns.
+
+Tool results also expose deterministic semantic feature columns: Noul probability,
+label probabilities, expected rubric level, semantic variance/entropy and semantic
+confidence. These are projections of measurements, not scientific results or
+statistical confidence. Agents may evaluate their empirical usefulness themselves.

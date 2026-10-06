@@ -142,3 +142,11 @@ kinds fail validation instead of masquerading as missing history.
 Validation history remains retained and exposed after review. The current-cycle
 lifecycle field still controls admission; historical projections do not authorize
 new work.
+
+
+Director-led discovery uses recordAgentDiscovery: current Director authority,
+mission revision and snapshot artifact access are checked independently of shape.
+Actual Director SemanticMeasurements retain their run origin in ordinary canonical
+records; Genesis references them without duplicating authoritative measurements.
+DIRECTOR_SIDE_WORK runs may coexist with an active Researcher, retain learning,
+and settle independently, but cannot create a DirectorDecision/next objective.

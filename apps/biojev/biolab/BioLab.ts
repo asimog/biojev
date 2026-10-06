@@ -203,6 +203,10 @@ export class BioLab extends Context.Service<
     readonly getGenesis: (
       missionId: string,
     ) => Effect.Effect<GenesisSnapshot | null, BioLabError>
+    readonly recordAgentDiscovery: (
+      authority: ActorAuthority,
+      input: GenesisDiscovery,
+    ) => Effect.Effect<GenesisSnapshot, BioLabError>
     readonly recordGenesisDiscovery: (
       input: GenesisDiscovery,
       phase?: "DISCOVERING",

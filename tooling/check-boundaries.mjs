@@ -120,6 +120,7 @@ for (const file of await walk(backend)) {
     source.includes("Effect.runPromiseWith(") &&
     rel !== "apps/biojev/main.ts" &&
     rel !== "apps/biojev/platform/pi/execution-env/Linux.ts" &&
+    rel !== "apps/biojev/platform/pi/execution-env/conformance.test.ts" &&
     rel !== "apps/biojev/platform/pi/tools.ts" &&
     rel !== "apps/biojev/jevengine/TypeSafeLive.ts"
   ) {

@@ -7,7 +7,7 @@ These are tracked, squashed Git subtrees from each upstream main branch:
 | effect | https://github.com/Effect-TS/effect | 073bb475d |
 | typesafe | https://github.com/typesafe-ai/typesafe-sdk-js | 66880ccded |
 
-They are reference source, not nested clones or production dependencies.
+These two directories are tracked subtrees, not production dependencies.
 Production code must never import from `repos/**`. Installed package versions
 remain the actual dependency contract; upstream main can differ from them.
 
@@ -21,9 +21,18 @@ git subtree pull --prefix=repos/effect https://github.com/Effect-TS/effect.git m
 git subtree pull --prefix=repos/typesafe https://github.com/typesafe-ai/typesafe-sdk-js.git main --squash
 ```
 
-Pi is intentionally not vendored. Its runtime, Durable, tools, and model APIs are imported from npm packages only inside apps/biojev/platform/pi.
-Read installed Pi documentation/source rather than creating another subtree or
-copying upstream implementation into the platform folder.
+Pi has a user-requested, Git-ignored local reference clone at `repos/pi`:
+
+```bash
+git clone https://github.com/earendil-works/pi.git repos/pi
+```
+
+The reviewed upstream commit is `28dcce2ba45ce4a9efeb0f5b686f0be830fd89b9`
+(Pi 1.0.4); installed BioJev packages are pinned at 1.0.4. This clone is
+neither a tracked subtree nor a runtime dependency. Pi runtime, tools, and model
+APIs are imported from npm only inside apps/biojev/platform/pi. Never copy
+upstream implementation into that folder. See the compatibility review in
+specs/architecture/PI_COMPATIBILITY.md before upgrading.
 
 Application authority and layout follow specs/architecture/CONSTITUTION.md
 and specs/guides/REPOSITORY.md; upstream reference folders retain upstream docs.

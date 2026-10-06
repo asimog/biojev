@@ -174,8 +174,9 @@ carry a retained-record cursor so reconnecting/polling UI clients append immutab
 records without resetting previously loaded pages. Empty pages preserve the
 cursor; it is an observation token, not institutional authority.
 
-An unavailable or malformed deployment catalog records an explicit FAILED Genesis
-snapshot. Empty discovery skips semantic transport; it cannot satisfy readiness.
-Correcting/replacing the configured catalog and explicitly retrying uses the same
-BioLab/Genesis path. No provider-specific branch or alternate execution system is
-introduced.
+Production Genesis runs through the imported Director, not a catalog reader.
+Insufficient discovery remains explicit and parks scheduling rather than spinning
+repeated model turns. Scoped concurrent Director/Researcher work is application
+lifetime management, not a second cognition loop. The imported environment
+conformance suite invokes its scoped Effect runner at a foreign test callback;
+check-boundaries allowlists only that exact conformance.test.ts boundary.

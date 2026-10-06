@@ -58,8 +58,9 @@ ownership are implemented. Pi-owned Linux computation, artifact retention, and
 cleanup are qualified at the integration seam. Role programs, handoffs, validation,
 commands and conservative recovery now run through real stores in deterministic
 integration tests. Semantic/capability tools and a committed activity projection are implemented.
-Production composition, full capability reuse qualification, and live UI
-observation remain unfinished; resource availability does not authorize scheduling.
+Production composition, capability reuse and local UI observation have previous
+qualification evidence; changed concurrency and discovery paths are tracked in
+the implementation plan. Resource availability never authorizes scheduling.
 
 ## Depth and testability
 
@@ -84,9 +85,11 @@ contracts are not evidence of completed deep implementations.
 
 ## Genesis integration
 
-Genesis is an initialization phase coordinated by Core, with a replaceable
-discovery program supplied by composition. It uses BioLab and Jev before the
-existing inaugural Director; it introduces no application peer or new role.
+Genesis is the existing Director’s open-ended initialization turn coordinated
+by Core. Director discovers, updates BioLab, uses Jev and chooses the inaugural
+objective. It introduces no application peer or new role. During each Researcher
+block, Director side work uses a separate environment without replacing the
+active objective or bypassing validation.
 
 [Genesis](GENESIS.md) owns initialization lifecycle, provenance, partial-failure
 policy, and the distinction from later Refresh.

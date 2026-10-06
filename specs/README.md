@@ -10,7 +10,7 @@ Institutional sequencing is deterministic. Scientific procedure stays open.
 | --- | --- |
 | [Architecture](architecture/README.md) | Modules, interfaces, seams, and design depth |
 | [Constitution](architecture/CONSTITUTION.md) | System invariants |
-| [Genesis](architecture/GENESIS.md) | Replaceable initial discovery, inaugural direction, and Refresh distinction |
+| [Genesis](architecture/GENESIS.md) | Director-led initial discovery, inaugural direction, and Refresh distinction |
 | [Roles](architecture/AGENT_ROLES.md) | Role inputs, outputs, and lifetimes |
 | [BioLab](architecture/BIOLAB.md) | Institutional records and recording interface |
 | [Jev](architecture/JEVENGINE.md) | Semantic measurement interface |
@@ -30,3 +30,6 @@ and owns the three-package Pi dependency decision. The root README
 describes current implementation. The workflows describe obligations, including
 behavior and acceptance criteria. Dependencies
 and tooling settings are defined by manifests, lockfile, and editor configuration.
+
+[Jev cookbook patterns](guides/JEV_COOKBOOKS.md) are optional agent techniques,
+not mandatory scientific choreography.
