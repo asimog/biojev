@@ -144,7 +144,7 @@ Production role budgets start at two minutes. Each retained ResearchBlock timeou
 adds one minute to subsequent role budgets for that mission, up to a hard
 five-minute maximum. Successful and cancelled blocks do not increase the budget.
 Adaptation is derived from BioLab history and survives backend restart. Pi receives
-a native steering reminder with at most one minute remaining, asking for an
+a native steering reminder after 60 percent of the budget has elapsed, asking for an
 honest handoff rather than another investigation. The scoped reminder is cancelled
 when the role settles; it adds no scientific decision policy. Terminal outcomes
 are COMPLETED, COMPLETED_NO_RESULTS, FAILED, TIMED_OUT, and CANCELLED. Absence of

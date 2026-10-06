@@ -487,7 +487,7 @@ export const acquireRolePrograms = Effect.fn("Pi.acquireRolePrograms")(
             const deadlineReminder =
               options.blockTimeoutMaxMs === undefined
                 ? undefined
-                : yield* Effect.sleep(Math.max(0, timeout - 60_000)).pipe(
+                : yield* Effect.sleep(timeout * 0.6).pipe(
                     Effect.andThen(
                       promise(role, async (signal) => {
                         await owned.submit(
@@ -500,7 +500,7 @@ export const acquireRolePrograms = Effect.fn("Pi.acquireRolePrograms")(
                               runId,
                               deadline: now + timeout,
                               message:
-                                "At most one minute remains. Finish retaining the work already obtained and submit_handoff now. An honest limited or no-results handoff is valid. Do not start additional investigations; later blocks can pursue open questions.",
+                                "The final 40 percent of the time budget remains. Finish retaining the work already obtained and submit_handoff now. An honest limited or no-results handoff is valid. Do not start additional investigations; later blocks can pursue open questions.",
                             }),
                           },
                           withAbortSignal(signal, BACKGROUND_CONTEXT),
