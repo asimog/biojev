@@ -10,12 +10,16 @@ Native Jev batches and structured questions support the optional cookbook patter
 in [Jev recipes](guides/JEV_COOKBOOKS.md). No deterministic scientific loop is added.
 Earlier qualification below describes the preceding serial/catalog implementation;
 the changed paths now pass automated regression qualification. `npm run check`
-passes Effect diagnostics, boundaries, lint, typechecking, 72 tests across 18 files,
+passes Effect diagnostics, boundaries, lint, typechecking, 73 tests across 19 files,
 and backend/Next.js builds. The tests include 24 imported Pi environment
 conformance cases, a 100 MB artifact round trip, Director-led Genesis and
 concurrent Director side work, and 25 ResearchBlocks with two validation/review
-barriers. Live-provider qualification of these changed paths remains outstanding;
-the earlier live run does not qualify the concurrent implementation.
+barriers. The current [live qualification](LIVE_RUN_REPORT.md) settled twelve
+research attempts with five countable dossiers and seven orphan timeouts. It
+verified real Director side work, retrieval, storage integrity and stop cleanup,
+but did not reach the live Validator/Director-review barrier. Reliable bounded
+handoff remains a production qualification blocker; the earlier serial live run
+does not qualify the concurrent implementation.
 
 ## Problem Statement
 

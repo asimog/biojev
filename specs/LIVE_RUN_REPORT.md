@@ -1,4 +1,99 @@
-# Live five-minute lifecycle report
+# Live lifecycle qualification
+
+## Current adaptive twelve-attempt run — qualification FAILED
+
+Date: 2026-10-06. Mission: `live-two-minute-v0`. Real OpenRouter cognition,
+TypeSafe semantics and imported Pi Durable/Pi AI/Chord 1.0.4 were used.
+The final runtime source was `458da6d49fc6be1ebcf8bb6c25bde9eb41b380d3`. Fixes were deployed between
+research attempts, and the human mission was refined to prefer genuinely small
+objectives. This is an exploratory qualification with interventions, not an
+uninterrupted qualification of one immutable build.
+
+The requested twelve research attempts settled: **five completed countable
+ResearchBlocks and seven timed-out orphan blocks**. This did not produce twelve
+countable blocks. No Validator cycle ran because the ten-countable-block barrier
+was never reached. Consequently live validation and Director review of a
+ValidationReport remain unqualified for this implementation.
+
+The mission was explicitly stopped after attempt 12. Backend reports IDLE;
+all canonical runs are settled and no owned workspace remains. The local frontend
+continues to serve at http://localhost:3000; backend is http://127.0.0.1:3001.
+
+### Budgets and outcomes
+
+Budgets began at 120,000 ms. Each retained ResearchBlock timeout adds 60,000 ms
+to subsequent role budgets for the mission, capped at 300,000 ms. Successful and
+cancelled blocks do not increase the budget. The current deadline reminder uses
+Pi's native `whenBusy: "steer"` after 60 percent of the budget has elapsed.
+Work is aborted at the hard deadline before a timed-out block is finalized;
+finalization/cleanup timestamps can be a few milliseconds beyond that deadline.
+
+| Attempt | Budget seconds | Settled seconds | Status | Countability |
+| --- | ---: | ---: | --- | --- |
+| 1 | 120 | 120.1 | TIMED_OUT | ORPHAN |
+| 2 | 120 | 120.0 | TIMED_OUT | ORPHAN |
+| 3 | 240 | 240.0 | TIMED_OUT | ORPHAN |
+| 4 | 300 | 300.0 | TIMED_OUT | ORPHAN |
+| 5 | 300 | 157.2 | COMPLETED | COUNTABLE |
+| 6 | 300 | 273.9 | COMPLETED | COUNTABLE |
+| 7 | 300 | 300.0 | TIMED_OUT | ORPHAN |
+| 8 | 300 | 300.0 | TIMED_OUT | ORPHAN |
+| 9 | 300 | 272.8 | COMPLETED | COUNTABLE |
+| 10 | 300 | 149.6 | COMPLETED | COUNTABLE |
+| 11 | 300 | 253.5 | COMPLETED | COUNTABLE |
+| 12 | 300 | 300.0 | TIMED_OUT | ORPHAN |
+
+### Verified behavior
+
+- Director-led Genesis completed with actual external retrieval, retained source
+  snapshots, explicit partial-discovery limitations and real Jev measurements;
+  no source-specific application branch or mandatory catalog was introduced.
+- Twelve fresh Researcher conversations and one persistent Director conversation
+  were retained. Director side work ran alongside every research attempt in its
+  own environment; twelve side-work runs were recorded.
+- BioLab retained eleven ScientificResults, five ResearchDossiers, three
+  SemanticMeasurements, and separate interpretations, failures and uncertainties.
+  Every ScientificResult has an operation receipt from its own origin run.
+- Both SQLite integrity checks return `ok`; every retained artifact matches its
+  recorded size and SHA-256 identity.
+- Frontend HTTP, proxied history and SSE snapshots were exercised successfully.
+  Browser rendering/hydration was not independently inspected with a browser.
+- Final stop leaves zero active runs, no scheduler failure and no owned workspace.
+- `npm run check` passes 73 tests across 19 files, including 24 imported Pi
+  environment conformance cases and deterministic 25-block/two-validation-window
+  integration coverage; Effect diagnostics, boundaries, lint, typechecks and builds
+  also pass. Those fixtures do not replace the missing live Validator qualification.
+
+### Bugs corrected and remaining gaps
+
+Discovery bookkeeping previously allowed an empty declared-input list alongside
+real outcomes, preventing Genesis qualification. The Pi tool now derives declared
+input IDs from its explicit outcomes while preserving completeness and provenance
+checks. Instructions clarify immutable candidate updates and the shared projection
+requirement for native Jev batches.
+
+Stale hypothesis revisions previously returned an unhelpful conflict message.
+They now return the exact latest revision reference, and the predecessor query is
+mission-scoped. A regression demonstrated the original failure and proves that
+independent missions can reuse a hypothesis identity without borrowing history.
+
+The live run still fails reliable bounded handoff: agents frequently keep computing
+or retaining optional learning records until the deadline, leaving no dossier.
+An earlier native reminder improves urgency but does not guarantee completion.
+The smallest next qualification task is to reduce handoff/write friction without
+relaxing recording authority, then run a clean real-provider ten-countable-block
+window through Validator and Director review before admitting the next block.
+
+Adaptive growth currently responds to ResearchBlock timeouts, not standalone
+Director/Genesis or Validator timeout outcomes. No aggregate extracted-repository
+quota or broader deployment qualification is claimed by this run.
+
+Local evidence is retained under `data/live-two-minute-v0/` and ignored by Git:
+`snapshot.json`, `history.json`, `qualification.json`, `backend.log`,
+`adaptive-regression.log`, separate SQLite databases and content-addressed artifacts.
+No credentials were copied into this report.
+
+## Previous five-minute lifecycle (serial/catalog implementation)
 
 Mission: `methods-five-minute-1791176636575`
 Date: 2026-10-05 UTC
