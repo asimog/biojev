@@ -60,4 +60,9 @@ export const ApplicationPaths = Config.all({
 export const BlockTimeoutMs = Config.schema(
   Schema.Int.check(Schema.isGreaterThan(0)),
   "BIOJEV_BLOCK_TIMEOUT_MS",
-).pipe(Config.withDefault(600000))
+).pipe(Config.withDefault(120000))
+
+export const BlockTimeoutMaxMs = Config.schema(
+  Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 300000 })),
+  "BIOJEV_BLOCK_TIMEOUT_MAX_MS",
+).pipe(Config.withDefault(300000))

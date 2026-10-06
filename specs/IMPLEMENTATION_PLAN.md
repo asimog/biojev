@@ -271,7 +271,7 @@ Acceptance:
 - Director owns objective choice; Researcher chooses method and action order.
 - A new block has a new Researcher; its provenance links mission, objective, AgentRun, conversation, environment, receipts, records, and dossier.
 - COMPLETED_NO_RESULTS is an explicit outcome, not a zero finding or fabricated result.
-- The approximate ten-minute ResearchBlock deadline requests explicit Pi abort with a live cleanup context, then waits for idle and environment cleanup before TIMED_OUT.
+- The adaptive two-to-five-minute ResearchBlock deadline requests explicit Pi abort with a live cleanup context, then waits for idle and environment cleanup before TIMED_OUT.
 - Cancelled work and failed work without a dossier retain orphan history. A timeout without a dossier is outside the countable trajectory; preserve its actual output and failure context.
 - Cleanup failure leaves recovery-required work rather than a falsely settled block.
 
@@ -521,7 +521,8 @@ eleventh attempt. [Live run report](LIVE_RUN_REPORT.md) records each block,
 canonical evidence and material agent retrieval/reasoning errors. This verifies
 the live lifecycle, not scientific effectiveness: repeated probes and unsupported
 interpretations remain visible. BIOJEV_BLOCK_TIMEOUT_MS configures role limits;
-the default remains ten minutes and this run used 300000.
+that historical run used a fixed 300000. Current production budgets adapt from
+120000 up to 300000 using retained ResearchBlock timeouts.
 
 ## Fast retrieval and handoff regression qualification
 

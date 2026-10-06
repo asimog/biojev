@@ -140,7 +140,7 @@ export const makeBioLabTools = Effect.fn("Pi.makeBioLabTools")(
             defineTool({
               name: "record_discovery",
               description:
-                "Retain a broad discovered scientific landscape in BioLab. Retrieve and paginate sources freely with coding tools; retain actual snapshots first and use their Artifact ids as snapshotRef. Supply a candidate batch and explicit partial failures; BioLab retains the accumulated map. Pass measurementRefs from actual semantic tool results to associate relevant retained measurements with discovery. Later calls after Genesis are Refresh, never reinitialization. No source or scientific method is prescribed.",
+                "Retain a broad discovered scientific landscape in BioLab. Retrieve and paginate sources freely with coding tools; retain actual snapshots first and use their Artifact ids as snapshotRef. Declare the inputIds you chose in configuredInputIds, including failed sources; this is your discovery scope, not a preconfigured catalog. Every declared input must have exactly one explicit outcome. Outcome inputIds also declare discovery scope automatically. Previously retained candidates are immutable: use candidates: [] when attaching measurements or updating discovery scope; add new candidate ids for later discoveries. Supply a candidate batch and explicit partial failures; BioLab retains the accumulated map. Pass measurementRefs from actual semantic tool results to associate relevant retained measurements with discovery. Later calls after Genesis are Refresh, never reinitialization. No source or scientific method is prescribed.",
               parameters: Type.Unsafe<typeof discoveryInput.Type>(
                 Schema.toJsonSchemaDocument(discoveryInput).schema,
               ),
@@ -165,6 +165,14 @@ export const makeBioLabTools = Effect.fn("Pi.makeBioLabTools")(
                     )
                     return yield* lab.recordAgentDiscovery(input.actor, {
                       ...discovery,
+                      configuredInputIds: [
+                        ...new Set([
+                          ...discovery.configuredInputIds,
+                          ...discovery.outcomes.map(
+                            (outcome) => outcome.inputId,
+                          ),
+                        ]),
+                      ],
                       missionId: actor.missionId,
                       missionRevision: actor.missionRevision ?? 0,
                       measurements,
@@ -726,7 +734,7 @@ export const makeBioLabTools = Effect.fn("Pi.makeBioLabTools")(
             defineTool({
               name: "measure_semantics_batch",
               description:
-                "Ask up to 64 independently versioned Jev questions over the same projected state in one native TypeSafe request. Use any Noul, Choice or Score rubric you design. Supports semantic search/comparison, entity alignment, citation checks, question-derived numeric features and uncertainty analysis. You decide whether/how to use results; no automatic research policy or feature-search loop is imposed. Usage belongs to the shared receipt, not each answer independently.",
+                "Ask up to 64 independently versioned Jev questions over the same projected state in one native TypeSafe request. Every question must have identical projection.value; put question-specific criteria in instructions, not in different projected values. Use measure_semantics separately when inputs differ. Use any Noul, Choice or Score rubric you design. Supports semantic search/comparison, entity alignment, citation checks, question-derived numeric features and uncertainty analysis. You decide whether/how to use results; no automatic research policy or feature-search loop is imposed. Usage belongs to the shared receipt, not each answer independently.",
               parameters: Type.Unsafe<typeof batchInput.Type>(
                 Schema.toJsonSchemaDocument(batchInput).schema,
               ),

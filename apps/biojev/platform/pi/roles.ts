@@ -18,6 +18,7 @@ import type { FinishBlock } from "../../biolab/model/Lifecycle.ts"
 import type { ExecutionAuthority } from "../../biolab/model/Recording.ts"
 import { OpenRouterKey, OpenRouterModelConfig } from "../../config/config.ts"
 import type { JevEngine } from "../../jevengine/JevEngine.ts"
+import { roleBudgetMs } from "./budget.ts"
 import {
   acquireLinuxEnvironment,
   type LinuxOptions,
@@ -58,6 +59,7 @@ export const acquireRolePrograms = Effect.fn("Pi.acquireRolePrograms")(
       readonly environment: LinuxOptions
       readonly concurrentDirector?: boolean
       readonly blockTimeoutMs?: number
+      readonly blockTimeoutMaxMs?: number
       readonly jev?: JevEngine["Service"]
     } & (
       | { readonly models: Models; readonly model: ModelRef }
@@ -327,7 +329,12 @@ export const acquireRolePrograms = Effect.fn("Pi.acquireRolePrograms")(
               }),
             )
             const now = DateTime.toEpochMillis(yield* DateTime.now)
-            const timeout = options.blockTimeoutMs ?? 600000
+            const priorBlocks = yield* lab.getResearchBlocks(missionId)
+            const timeout = roleBudgetMs(
+              options.blockTimeoutMs ?? 600000,
+              options.blockTimeoutMaxMs,
+              priorBlocks,
+            )
             if (role === "researcher") {
               yield* lab.startResearchBlock(
                 actor.actor,
@@ -366,7 +373,6 @@ export const acquireRolePrograms = Effect.fn("Pi.acquireRolePrograms")(
                 BACKGROUND_CONTEXT,
               ),
             )
-            const priorBlocks = yield* lab.getResearchBlocks(missionId)
             const latestHandoff = priorBlocks
               .filter(
                 (block) =>
@@ -476,6 +482,34 @@ export const acquireRolePrograms = Effect.fn("Pi.acquireRolePrograms")(
                     ),
                   }),
             }
+            // Pi places this reminder at its own turn/tool boundary.
+            // It changes resource urgency, never the chosen scientific method.
+            const deadlineReminder =
+              options.blockTimeoutMaxMs === undefined
+                ? undefined
+                : yield* Effect.sleep(Math.max(0, timeout - 60_000)).pipe(
+                    Effect.andThen(
+                      promise(role, async (signal) => {
+                        await owned.submit(
+                          {
+                            type: "input",
+                            whenBusy: "steer",
+                            requestId: `${runId}:deadline-reminder`,
+                            content: JSON.stringify({
+                              type: "DEADLINE_REMINDER",
+                              runId,
+                              deadline: now + timeout,
+                              message:
+                                "At most one minute remains. Finish retaining the work already obtained and submit_handoff now. An honest limited or no-results handoff is valid. Do not start additional investigations; later blocks can pursue open questions.",
+                            }),
+                          },
+                          withAbortSignal(signal, BACKGROUND_CONTEXT),
+                        )
+                      }),
+                    ),
+                    Effect.catch((error) => Effect.logWarning(error)),
+                    Effect.forkScoped,
+                  )
             const outcome = yield* Effect.exit(
               restore(
                 promise(role, async (signal) => {
@@ -493,6 +527,8 @@ export const acquireRolePrograms = Effect.fn("Pi.acquireRolePrograms")(
                 }).pipe(Effect.timeout(timeout)),
               ),
             )
+            if (deadlineReminder !== undefined)
+              yield* Fiber.interrupt(deadlineReminder)
             if (Exit.isFailure(outcome)) {
               terminal = Cause.hasInterrupts(outcome.cause)
                 ? "CANCELLED"

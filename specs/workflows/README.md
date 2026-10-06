@@ -140,7 +140,13 @@ retain ResearchBlock and attributed AgentRun
   -> await Pi-owned computation cleanup and retain actual terminal state through BioLab
 ```
 
-Approximately ten minutes is the normal v0 wall-time limit. Terminal outcomes
+Production role budgets start at two minutes. Each retained ResearchBlock timeout
+adds one minute to subsequent role budgets for that mission, up to a hard
+five-minute maximum. Successful and cancelled blocks do not increase the budget.
+Adaptation is derived from BioLab history and survives backend restart. Pi receives
+a native steering reminder with at most one minute remaining, asking for an
+honest handoff rather than another investigation. The scoped reminder is cancelled
+when the role settles; it adds no scientific decision policy. Terminal outcomes
 are COMPLETED, COMPLETED_NO_RESULTS, FAILED, TIMED_OUT, and CANCELLED. Absence of
 results is an explicit outcome, not a zero-valued finding. Retain available
 failure/uncertainty information even if the model cannot produce a full dossier.

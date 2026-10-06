@@ -84,7 +84,7 @@ it.live(
             const discovery = {
               programId: "director-chosen-discovery",
               programVersion: "1",
-              configuredInputIds: ["chosen-source"],
+              configuredInputIds: [],
               outcomes: [
                 {
                   inputId: "chosen-source",
